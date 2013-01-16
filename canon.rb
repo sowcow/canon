@@ -21,19 +21,26 @@ class WTP < Struct.new :parts
     marshal_load 'canon'
   end
 
-  def only_four_nikayas!
-    parts.select! { |x| %w'6D 7D 8D 9M 10M 11M 12S1 12S2 13S3 13S4 14S5 15A1 15A2 
-                           15A3 15A4 16A5 16A6 16A7 17A8 17A9 17A10 17A11'.include? x.name }
+  def only! selector
+    parts.select! { |x| selector.include? x.name }
     self
   end
 
   extend FileWorks
 end
 
+module Selectors
+  DIGHA = %w[6D 7D 8D]
+  MAJJHIMA = %w[9M 10M 11M]
+  SAMYUTTA = %w[12S1 12S2 13S3 13S4 14S5]
+  ANGUTTARA = %w[15A1 15A2 15A3 15A4 16A5 16A6 16A7 17A8 17A9 17A10 17A11]
+  FOUR_NIKAYAS = DIGHA + ANGUTTARA + MAJJHIMA + SAMYUTTA
+end
+include Selectors
 
 
 if __FILE__ == $0
-  raise unless WTP.get.only_four_nikayas!.parts.count == 22
+  raise unless WTP.get.only!(FOUR_NIKAYAS).parts.count == 22
 
   wtp = WTP.get
   raise unless wtp.parts.count == 88
