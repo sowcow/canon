@@ -298,7 +298,8 @@ module Nodes2
       # p element.children.map{|x|x[:class]}
       # true
       ch = element.children.reject { |x| x.name == 'text' }
-      (ch.map{|x|x[:class]} - %w[paragraphNum singleColumn smallFont italic bold]) == []
+      (ch.map{|x|x[:class]} - %w[paragraphNum singleColumn smallFont italic bold]) == [] &&
+          ELEMENTS_HAS_ONLY_ONE_TEXT[ch]
     end
   end
   class Palisectionname < Struct.new :element
