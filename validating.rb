@@ -300,13 +300,25 @@ module Nodes2
   #   end
   # end
 
-
-  class Tr < Struct.new :element
+  class Td < Struct.new :element
     def valid?
-      element.children.count == 0
+      # ch = element.children.reject { |x| x.name == 'text' }
+      # unless ch.map{|x|x[:class]} - %w[paragraphNum GATHA singleColumn] == []
+      #   binding.pry
+      # end
+      # ch.map{|x|x[:class]} - %w[paragraphNum GATHA singleColumn] == []
+      true
     end
   end
 
+
+  class Tr < Struct.new :element
+    def valid?
+      element.children.map(&:name) - ['td','text'] == []
+    end
+  end
+
+  # tbody-tr  sv  tr
   class Tbody < Struct.new :element
     def valid?
       element.children.map(&:name) - ['tr'] == []
@@ -317,8 +329,8 @@ module Nodes2
   class Singlecolumn < Struct.new :element
     def valid?
       ch = element.children.reject { |x| x.name == 'text' }
-      ch.map(&:name) - ['tbody','tr'] == [] &&                     # crap with tr and tbody :)
-          ch.map { |x| wrap2 x }.all_{ valid? }
+      ch.map(&:name) - ['tbody','tr','td'] == [] &&                     # crap with tr/td/tbody :)
+          ch.map { |x| wrap2(x).extend(Logger) }.all_{ valid? }
     end
   end
 
