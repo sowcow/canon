@@ -2,6 +2,7 @@
 require_relative 'canon'
 require 'my-sugar'
 require_delegation
+require 'pry' # debugging
 
 require 'active_attr'
 require 'nokogiri'
@@ -102,7 +103,7 @@ class FlatPage; is Model
     data == $trash[name]
   end
 
-  TOC = ->(x){x.text == "On Display : Table of Contents"}
+  # TOC = ->(x){x.text == "On Display : Table of Contents"}
 
   def valid?
     # require'pry';binding.pry
@@ -173,11 +174,18 @@ class FlatPage; is Model
     # some_times { p (got - known) }
     return false if (got - known).any?
 
-    empty_ones = %w[hidden CENTER ENDH3 SUMMARY ENDBOOK]
-    empty_ones.each do |that_class|
-      return false unless body_wrapper.children!.select {|x|x[:class] == that_class}.all_{children.none?}
-    end
 
+    they = tipitaka_node.children!
+    return false unless they.map {|x| wrap(x).extend(Logger) }.all? { |x|x.valid? }
+
+
+    # empty_ones = %w[hidden CENTER ENDH3 SUMMARY ENDBOOK]
+    # empty_ones.each do |that_class|
+    #   return false unless they.select {|x|x[:class] == that_class}.all_{children.none?}
+    # end
+    # (known - empty_ones).each do |that_class|
+    #   return false if they.select {|x|x[:class] == that_class}.any_{children.none?}
+    # end
     # empty_elements = tipitaka_node.children!.reject {|x|x[:class] == 'quotation'} #.reject &TOC
     # return false
     # unless empty_elements.empty?
@@ -226,14 +234,86 @@ class FlatPage; is Model
 
     # doc.at('head').remove
     # content.remove
-    # clean_state!
     true
   end
 
   delegate :HTML, to: Nokogiri
 end
 
-# def clean_state!; @doc = nil end
+def toc? element
+  element.name == 'p' && 
+   ["On Display : Title of Section Only","On Display : Table of Contents"].include?(element.text)
+end
+
+def wrap element
+  if element[:class]
+    klass = Nodes.const_get element[:class].capitalize
+  else
+    # raise p 'unknown element!!!' unless toc? element
+    binding.pry unless toc? element
+    klass = Nodes::Toc
+  end
+  klass.new element
+end
+
+module Logger
+  def valid?
+    valid = super
+    unless valid
+      require 'pry'; binding.pry
+    end
+    valid
+  end
+end
+
+module Nodes
+  module Kind
+    def empty?
+      element.children.empty? # not bang version of children
+    end
+  end
+
+  class Quotation < Struct.new :element; is Kind
+    def valid?
+      # some_times { p children(element) }
+      # ch = children(element)
+      # ch == ['div'] || ch == ['div','div']
+      true
+    end
+  end
+  class Toc < Struct.new :element; is Kind
+    def valid?
+      children(element) == ['text']
+    end
+  end
+  class Hidden < Struct.new :element; is Kind
+    def valid?;
+      children(element) - ['text'] == []
+    end
+  end
+  class Center < Struct.new :element; is Kind
+    def valid?
+      ((children(element) - ["span","text","br"]) == []) && element.children.select_{ name=='span'}.all?{|x|children(x)==['text']} # or text + br
+    end
+  end
+  class Endh3 < Struct.new :element; is Kind
+    def valid?
+      children(element) == ["span", "text"]
+    end
+  end  
+  class Summary < Struct.new :element; is Kind
+    def valid?
+      ((children(element) - ["span", "text"]) == []) && element.children.select_{ name=='span'}.all?{|x|children(x)==['text']}
+    end
+  end  
+  class Endbook < Struct.new :element; is Kind
+    def valid?
+      children(element) == ["span", "text"]
+    end
+  end  
+end
+
+
 
 # they use bang version: children!
 def children element
