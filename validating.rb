@@ -303,7 +303,7 @@ module Nodes2
 
   class Tr < Struct.new :element
     def valid?
-      true #element.children.count == 0
+      element.children.count == 0
     end
   end
 
@@ -341,8 +341,6 @@ module Nodes2
       (ch.map{|x|x[:class]} - %w[paragraphNum singleColumn smallFont italic bold]) == [] &&
           ELEMENTS_HAS_ONLY_ONE_TEXT[ch.reject{|x|x[:class]=='singleColumn'}] &&
           ch.select{|x|x[:class]=='singleColumn'}.map { |x| wrap2 x }.all_{ valid? }
-
-          ################################# singleColumn #################################
 
     end
   end
