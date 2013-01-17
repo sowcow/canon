@@ -9,6 +9,19 @@ require 'nokogiri'
 # THIS WAY FOR NOW: extracting invariants like: the pages has only one header
 # alternative: (all nodes ~> those who unchanged? ~> those who are stupid/unused info ~> result!!!)
 
+
+
+
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
+# i should never use standart #children method, it sucks
 # i should never use standart #children method, it sucks
 class Nokogiri::XML::Element
   def children!
@@ -28,6 +41,9 @@ class FlatPage; is Model
     h1_title.text # raise :implement_using_title
   end   
 
+  ######################
+  ##  TODO: use .nav  ##
+  ######################
   def navigation
     head_tag.css('link').map do |link|
       [link[:rel], link[:href]]
@@ -39,6 +55,11 @@ class FlatPage; is Model
   def breadcrumbs
     raise :implement_using_breadcrumb
   end  
+  def last_edited_by
+    user = main_node.children![4]
+    date = main_node.children![5].text.strip
+    {name: user.text, href: user[:href], date: date}
+  end
   # def reload!; @doc = nil end
 
   # def doc; @doc ||= HTML html end
@@ -62,6 +83,11 @@ class FlatPage; is Model
   def tabs; at main, '.tabs' end
   def h1_title; at main, 'h1.title' end
   def main_node; at main, '.node' end
+  def content_node; main_node.children![2] end
+  def nav; content_node.children![3] end
+  def body_wrapper; content_node.children![2] end
+  def tipitaka_node; body_wrapper.children![0] end
+
   # move trash[nodes] out of methods?
 
   def at node, selector
@@ -120,9 +146,34 @@ class FlatPage; is Model
 
     return false unless is_trash :span0 do main_node.children![0].to_s end
     return false unless is_trash :span1 do main_node.children![1].to_s end
+    return false unless is_trash :span3 do main_node.children![3].to_s end # "Last edited by:"
+
+    return false unless last_edited_by[:href] =~ /^user\//
+    return false if last_edited_by[:date].empty? || last_edited_by[:name].empty?
+
+    return false unless children_class(content_node) == [nil, nil, nil, "tipitaka-navigation"]
+    return false unless children_id(content_node) ==  [nil, "ajax_loader", "tipitakaBodyWrapper", nil]
+    return false unless children(content_node) ==  ["div", "div", "div", "div"]
+
+    return false unless is_trash :auth do content_node.children![0].to_s end
+    return false unless is_trash :ajax_loader do content_node.children![1].to_s end
+    # return false unless is_trash :ajust_height do content_node.children![...].to_s end # script tags already removed?...
+
+    return false unless children_class(nav) == ["menu", "page-links clear-block"] ||
+                        children_class(nav) == ["page-links clear-block"]
+
+    return false unless children(body_wrapper) == ["div"]
+    return false unless children_class(body_wrapper) == ["tipitakaNode"]
+
+    # return false unless tipitaka_node
+    # some_times { p children_class(tipitaka_node) }
+
+    # return false unless children_class(body_wrapper) == ["tipitakaNode"]
+    # p children_class(nav)    
+    # once { p children_class(body_wrapper) }
+
+    # once { p last_edited_by[:href] }
     # return false unless main_node.children![0].text ==) == ["span", "span", "div", "text", "a", "text"]
-
-
     # once { p title[title2] }
     # p children_id(sidebar) if rand(0..10) == 0
     # once { p children_id(sidebar) }
@@ -180,6 +231,10 @@ def once
     yield
     $already_done = true
   end
+end
+
+def some_times
+  yield if rand < 0.1
 end
 
 begin
