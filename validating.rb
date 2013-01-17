@@ -1,4 +1,11 @@
 #encoding: utf-8
+
+#############################################################
+#                                                           #
+#   CAUTION: reading this file can be big a waste of time   #
+#                                                           #
+#############################################################
+
 require_relative 'canon'
 require 'my-sugar'
 require_delegation
@@ -13,7 +20,7 @@ require 'nokogiri'
 
 
 
-# i should never use standart #children method, it sucks
+# i should never use standart #children method (in first half of this file), it sucks
 # i should never use standart #children method, it sucks
 # i should never use standart #children method, it sucks
 # i should never use standart #children method, it sucks
@@ -61,8 +68,11 @@ class FlatPage; is Model
     date = main_node.children![5].text.strip
     {name: user.text, href: user[:href], date: date}
   end
-  # def reload!; @doc = nil end
+  ######################
+  ## TODO: TODO, TODO ##
+  ######################
 
+  # def reload!; @doc = nil end
   # def doc; @doc ||= HTML html end
   def doc; @doc ||= HTML html end
   def html_tag; at doc, 'html' end
@@ -299,7 +309,10 @@ module Nodes2
       # true
       ch = element.children.reject { |x| x.name == 'text' }
       (ch.map{|x|x[:class]} - %w[paragraphNum singleColumn smallFont italic bold]) == [] &&
-          ELEMENTS_HAS_ONLY_ONE_TEXT[ch]
+          ELEMENTS_HAS_ONLY_ONE_TEXT[ch.reject{|x|x[:class]=='singleColumn'}]
+
+          ################################# singleColumn #################################
+
     end
   end
   class Palisectionname < Struct.new :element
