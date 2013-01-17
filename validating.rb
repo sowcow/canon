@@ -1,13 +1,13 @@
 #encoding: utf-8
 require_relative 'canon'
 require 'my-sugar'
-require_delegation #'active_support/core_ext/module/delegation'
+require_delegation
 
 require 'active_attr'
 require 'nokogiri'
 
-# all nodes ~> those who unchanged? ~> those who are stupid/unused info ~> result!!!
-# or parallel tests for invariants like: the page has only one header
+# THIS WAY FOR NOW: extracting invariants like: the pages has only one header
+# alternative: (all nodes ~> those who unchanged? ~> those who are stupid/unused info ~> result!!!)
 
 class Nokogiri::XML::Element
   def children!
@@ -28,6 +28,9 @@ class FlatPage; is Model
       [link[:rel], link[:href]]
     end.flatten.tap { |x| return Hash[*x].tap &x{ delete 'shortcut icon' } }
   end
+  def menu
+    raise :implement_using_block_0
+  end
 
   # def reload!; @doc = nil end
 
@@ -42,6 +45,7 @@ class FlatPage; is Model
 
   def left_sidebar; at content.children[0], '#sidebar-left' end
   def sidebar; at left_sidebar, '#sidebar-left-div' end
+  def block_0; at sidebar, '#block-tipitaka-0' end
 
   def at node, selector
     found = node.css(selector)
@@ -51,6 +55,8 @@ class FlatPage; is Model
   # def content; doc.at 'div.content' end
 
   def valid?
+    $trash ||= {}
+
     # require'pry';binding.pry
     return false unless children(html_tag) == %w[head body]
     return false unless children(head_tag) - %w[script style link meta] == %w[title]
@@ -68,6 +74,11 @@ class FlatPage; is Model
     return false unless children_id(left_sidebar) == %w[sidebar-left-div]
 
     return false unless children_id(sidebar) == ["block-tipitaka-0", "block-block-7", "block-block-13", "block-block-6", "block-block-4", "block-tipitaka-2", "block-user-1", "block-user-0"]
+    
+    sidebar.css('#block-tipitaka-0').remove
+    $trash[:sidebar] ||= sidebar.text # text < to_s ...
+    return false unless sidebar.text == $trash[:sidebar]
+
     # p children_id(sidebar) if rand(0..10) == 0
     # once { p children_id(sidebar) }
     # once { p children_id(left_sidebar) }
@@ -97,14 +108,15 @@ class FlatPage; is Model
 
     # doc.at('head').remove
     # content.remove
+    # clean_state!
     true
   end
 
   delegate :HTML, to: Nokogiri
 end
-# def tag element
-#   element.name + element.attributes.inspect
-# end
+
+# def clean_state!; @doc = nil end
+
 def children element
   element.children!.map(&:name)
 end
@@ -129,7 +141,7 @@ begin
 
   p pages.all? &:valid? 
 
-end if false
+end #if false
 
 # File.write 'random-page.html', page.html
 # File.write 'random-page.yml', YAML.dump(page.doc.inspect)
@@ -140,8 +152,8 @@ end if false
 
 collection = ALL
 collection.each { |selector|
-  puts all_pages(selector).all? &:valid?
-}
+  puts (all_pages(selector).all?(&:valid?) ? '+':'-') + selector
+} if false
 
 # def how_long
 #   t = Time.now
