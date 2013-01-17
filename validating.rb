@@ -309,7 +309,8 @@ module Nodes2
       # true
       ch = element.children.reject { |x| x.name == 'text' }
       (ch.map{|x|x[:class]} - %w[paragraphNum singleColumn smallFont italic bold]) == [] &&
-          ELEMENTS_HAS_ONLY_ONE_TEXT[ch.reject{|x|x[:class]=='singleColumn'}]
+          ELEMENTS_HAS_ONLY_ONE_TEXT[ch.reject{|x|x[:class]=='singleColumn'}] &&
+          ch.select{|x|x[:class]=='singleColumn'}.map { |x| wrap2 x }.all_{ valid? }
 
           ################################# singleColumn #################################
 
