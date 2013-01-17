@@ -292,6 +292,19 @@ module Nodes2
   #   element.children.select {|x|x[:class] == 'divNumber' }.all? { |x| x.children.map(&:name) == ['text'] }
   # end  
 
+  # class Tr? < Struct.new :element
+  #   def valid?;
+  #     element.children.count == 0
+  #   end
+  # end
+
+  class Singlecolumn < Struct.new :element
+    def valid?;
+      ch = element.children.reject { |x| x.name == 'text' }
+      ch.map(&:name) - ['tbody','tr'] == []                      # crap with tr and tbody :)
+    end
+  end
+
   class Text < Struct.new :element
     def valid?;
       element.children.count == 0
