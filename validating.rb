@@ -17,7 +17,9 @@ require 'nokogiri'
 # THIS WAY FOR NOW: extracting invariants like: the pages has only one header
 # alternative: (all nodes ~> those who unchanged? ~> those who are stupid/unused info ~> result!!!)
 
-
+########################
+# all -> db , element.attr -> json field for each table?
+########################
 
 
 # i should never use standart #children method (in first half of this file), it sucks
@@ -298,15 +300,30 @@ module Nodes2
   #   end
   # end
 
+
+  class Tr < Struct.new :element
+    def valid?
+      true #element.children.count == 0
+    end
+  end
+
+  class Tbody < Struct.new :element
+    def valid?
+      element.children.map(&:name) - ['tr'] == []
+    end
+  end
+
+
   class Singlecolumn < Struct.new :element
-    def valid?;
+    def valid?
       ch = element.children.reject { |x| x.name == 'text' }
-      ch.map(&:name) - ['tbody','tr'] == []                      # crap with tr and tbody :)
+      ch.map(&:name) - ['tbody','tr'] == [] &&                     # crap with tr and tbody :)
+          ch.map { |x| wrap2 x }.all_{ valid? }
     end
   end
 
   class Text < Struct.new :element
-    def valid?;
+    def valid?
       element.children.count == 0
     end
   end
