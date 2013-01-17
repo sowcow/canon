@@ -22,7 +22,7 @@ class WTP < Struct.new :parts
   end
 
   def only! selector
-    parts.select! { |x| selector.include? x.name }
+    parts.select! { |x| [*selector].include? x.name }
     self
   end
 
