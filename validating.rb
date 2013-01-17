@@ -9,6 +9,7 @@ require 'nokogiri'
 # THIS WAY FOR NOW: extracting invariants like: the pages has only one header
 # alternative: (all nodes ~> those who unchanged? ~> those who are stupid/unused info ~> result!!!)
 
+# i should never use standart #children method, it sucks
 class Nokogiri::XML::Element
   def children!
     children.reject &BLANK
@@ -23,6 +24,10 @@ class FlatPage; is Model
   def title
     head_tag.at('title').content
   end
+  def title2
+    h1_title.text # raise :implement_using_title
+  end   
+
   def navigation
     head_tag.css('link').map do |link|
       [link[:rel], link[:href]]
@@ -31,7 +36,9 @@ class FlatPage; is Model
   def menu
     raise :implement_using_block_0
   end
-
+  def breadcrumbs
+    raise :implement_using_breadcrumb
+  end  
   # def reload!; @doc = nil end
 
   # def doc; @doc ||= HTML html end
@@ -42,10 +49,20 @@ class FlatPage; is Model
   def header; at body_tag, '#header' end
   def footer; at body_tag, '#footer' end
   def content; at body_tag, '#content' end
+  def content_; content.children![0] end
 
-  def left_sidebar; at content.children[0], '#sidebar-left' end
+  def left_sidebar; at content_, '#sidebar-left' end
   def sidebar; at left_sidebar, '#sidebar-left-div' end
   def block_0; at sidebar, '#block-tipitaka-0' end
+
+  def table_main;  at content_, '#table-main' end
+  def main; table_main.children![1] end
+
+  def breadcrumb; at main, '.breadcrumb' end
+  def tabs; at main, '.tabs' end
+  def h1_title; at main, 'h1.title' end
+  def main_node; at main, '.node' end
+  # move trash[nodes] out of methods?
 
   def at node, selector
     found = node.css(selector)
@@ -53,10 +70,13 @@ class FlatPage; is Model
     # node.css(selector).tap {|x| raise "found #{x.count} nodes" unless x.count == 1 }.first
   end
   # def content; doc.at 'div.content' end
+  def is_trash name; data = yield
+    $trash ||= {}
+    $trash[name] ||= data
+    data == $trash[name]
+  end
 
   def valid?
-    $trash ||= {}
-
     # require'pry';binding.pry
     return false unless children(html_tag) == %w[head body]
     return false unless children(head_tag) - %w[script style link meta] == %w[title]
@@ -76,9 +96,34 @@ class FlatPage; is Model
     return false unless children_id(sidebar) == ["block-tipitaka-0", "block-block-7", "block-block-13", "block-block-6", "block-block-4", "block-tipitaka-2", "block-user-1", "block-user-0"]
     
     sidebar.css('#block-tipitaka-0').remove
-    $trash[:sidebar] ||= sidebar.text # text < to_s ...
-    return false unless sidebar.text == $trash[:sidebar]
+    # $trash[:sidebar] ||= sidebar.text # text < to_s # to_s ~ return false
+    # return false unless sidebar.text == $trash[:sidebar]
+    return false unless is_trash :sidebar do sidebar.text end
 
+
+    return false unless children_id(table_main) == ["statement", "main"]
+
+    return false unless table_main.children![0].text.strip == 'Tipiṭaka Studies in Theravāda Buddhasāsana'
+    
+    return false unless children_class(main) == ["breadcrumb", "title", "tabs", "node"]
+    
+    # $trash[:tabs] ||= tabs.to_s # text < to_s # to_s ~ return false
+    # return false unless tabs.to_s == $trash[:tabs]
+    return false unless is_trash :tabs do tabs.to_s end
+
+    return false unless title[title2]
+    # once { p children_class(main_node) }
+    # require'pry';binding.pry
+
+    return false unless children(main_node) == ["span", "span", "div", "text", "a", "text"]
+    return false unless children_class(main_node) == ["submitted", "taxonomy", "content", nil, nil, nil]
+
+    return false unless is_trash :span0 do main_node.children![0].to_s end
+    return false unless is_trash :span1 do main_node.children![1].to_s end
+    # return false unless main_node.children![0].text ==) == ["span", "span", "div", "text", "a", "text"]
+
+
+    # once { p title[title2] }
     # p children_id(sidebar) if rand(0..10) == 0
     # once { p children_id(sidebar) }
     # once { p children_id(left_sidebar) }
@@ -117,12 +162,17 @@ end
 
 # def clean_state!; @doc = nil end
 
+# they use bang version: children!
 def children element
   element.children!.map(&:name)
 end
 
 def children_id element
   element.children!.map_{ attr :id }
+end
+
+def children_class element
+  element.children!.map_{ attr :class }
 end
 
 def once
