@@ -266,19 +266,70 @@ module Logger
   end
 end
 
+def wrap2 element
+  klass_name = element[:class] || element.name
+  klass = Nodes2.const_get klass_name.capitalize
+  klass.new element
+end
+
+module Nodes2
+
+  ELEMENTS_HAS_ONLY_ONE_TEXT =->(elements) do
+    elements.all? { |x| x.children.map(&:name) == ['text'] }
+  end  
+
+  # DIVNUMBERS_HAS_ONLY_ONE_TEXT =->(element) do
+  #   element.children.select {|x|x[:class] == 'divNumber' }.all? { |x| x.children.map(&:name) == ['text'] }
+  # end  
+
+  class Text < Struct.new :element
+    def valid?;
+      element.children.count == 0
+    end
+  end
+  class Divnumber < Struct.new :element
+    def valid?
+      # DIVNUMBERS_HAS_ONLY_ONE_TEXT[element]
+      ELEMENTS_HAS_ONLY_ONE_TEXT[[element]]
+    end
+  end
+  class Paragraph < Struct.new :element
+    def valid?
+      # p element.children.map{|x|x[:class]}
+      # true
+      ch = element.children.reject { |x| x.name == 'text' }
+      (ch.map{|x|x[:class]} - %w[paragraphNum singleColumn smallFont italic bold]) == []
+    end
+  end
+  class Palisectionname < Struct.new :element
+    def valid?
+      ch = element.children.reject { |x| x.name == 'text' || x.name == 'br' }
+      (ch.map{|x|x[:class]} - %w[paragraphNum]) == [] &&
+         ELEMENTS_HAS_ONLY_ONE_TEXT[ch]
+      #singleColumn smallFont italic bold]) == []
+    end
+  end
+end
+
 module Nodes
   module Kind
-    def empty?
-      element.children.empty? # not bang version of children
-    end
+  end
+
+  SPANS_HAS_ONLY_ONE_TEXT =->(element) do
+    element.children.select_{ name == 'span' }.all? { |x| x.children.map(&:name) == ['text'] }
   end
 
   class Quotation < Struct.new :element; is Kind
     def valid?
-      # some_times { p children(element) }
-      # ch = children(element)
-      # ch == ['div'] || ch == ['div','div']
-      true
+      ((children_class(element) - ['paragraph','divNumber','paliSectionName']) == []) &&
+          element.children.map { |x| wrap2(x).extend(Logger) }.all_{ valid? }
+      # paliSectionName - seldom?
+      # if children_class(element).include? 'paliSectionName'
+      #   binding.pry
+      # end
+      # ((children_class(element) - ['paragraph','divNumber','paliSectionName']) == []) &&
+      #        DIVNUMBERS_HAS_ONLY_ONE_TEXT[element]
+      #&& element[:class] == 'paragraph'      
     end
   end
   class Toc < Struct.new :element; is Kind
@@ -293,22 +344,24 @@ module Nodes
   end
   class Center < Struct.new :element; is Kind
     def valid?
-      ((children(element) - ["span","text","br"]) == []) && element.children.select_{ name=='span'}.all?{|x|children(x)==['text']} # or text + br
+      ((children(element) - ["span","text","br"]) == []) && SPANS_HAS_ONLY_ONE_TEXT[element]
+      # && element.children.select_{ name=='span'}.all?{|x|children(x)==['text']} # or text + br
     end
   end
   class Endh3 < Struct.new :element; is Kind
     def valid?
-      children(element) == ["span", "text"]
+      children(element) == ["span", "text"] && SPANS_HAS_ONLY_ONE_TEXT[element]
     end
   end  
   class Summary < Struct.new :element; is Kind
     def valid?
-      ((children(element) - ["span", "text"]) == []) && element.children.select_{ name=='span'}.all?{|x|children(x)==['text']}
+      ((children(element) - ["span", "text"]) == []) && SPANS_HAS_ONLY_ONE_TEXT[element]
+      #element.children.select_{ name=='span'}.all?{|x|children(x)==['text']}
     end
   end  
   class Endbook < Struct.new :element; is Kind
     def valid?
-      children(element) == ["span", "text"]
+      children(element) == ["span", "text"] && SPANS_HAS_ONLY_ONE_TEXT[element]
     end
   end  
 end
@@ -343,10 +396,10 @@ begin
   # pages = all_pages MAJJHIMA
   pages = all_pages FOUR_NIKAYAS
   p pages.count
-  page = pages.sample
-  raise unless page.is_a? FlatPage
-
-  p pages.all? &:valid? 
+  # page = pages.sample
+  # raise unless page.is_a? FlatPage
+  # pages.
+  p pages.shuffle.all? &:valid? 
 
 end #if false
 
