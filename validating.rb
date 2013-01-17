@@ -102,6 +102,8 @@ class FlatPage; is Model
     data == $trash[name]
   end
 
+  TOC = ->(x){x.text == "On Display : Table of Contents"}
+
   def valid?
     # require'pry';binding.pry
     return false unless children(html_tag) == %w[head body]
@@ -164,6 +166,26 @@ class FlatPage; is Model
 
     return false unless children(body_wrapper) == ["div"]
     return false unless children_class(body_wrapper) == ["tipitakaNode"]
+
+    known = %w[hidden quotation CENTER ENDH3 SUMMARY ENDBOOK]
+    got = children_class(tipitaka_node)
+    # puts (got - known) if (got - known).any?
+    # some_times { p (got - known) }
+    return false if (got - known).any?
+
+    empty_ones = %w[hidden CENTER ENDH3 SUMMARY ENDBOOK]
+    empty_ones.each do |that_class|
+      return false unless body_wrapper.children!.select {|x|x[:class] == that_class}.all_{children.none?}
+    end
+
+    # empty_elements = tipitaka_node.children!.reject {|x|x[:class] == 'quotation'} #.reject &TOC
+    # return false
+    # unless empty_elements.empty?
+    #   p empty_elements
+    #   return false
+    # end
+
+    # "On Display : Table of Contents"
 
     # return false unless tipitaka_node
     # some_times { p children_class(tipitaka_node) }
@@ -238,8 +260,8 @@ def some_times
 end
 
 begin
-  pages = all_pages MAJJHIMA
-  # pages = all_pages FOUR_NIKAYAS
+  # pages = all_pages MAJJHIMA
+  pages = all_pages FOUR_NIKAYAS
   p pages.count
   page = pages.sample
   raise unless page.is_a? FlatPage
@@ -257,7 +279,8 @@ end #if false
 
 collection = ALL
 collection.each { |selector|
-  puts (all_pages(selector).all?(&:valid?) ? '+':'-') + selector
+  # puts (all_pages(selector).all?(&:valid?) ? '+':'-') + selector
+  (all_pages(selector).all?(&:valid?)) ? nil : puts("--#{selector}")
 } if false
 
 # def how_long
