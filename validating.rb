@@ -61,10 +61,13 @@ module Rules
   def validate_as klass
     check { |e| wrap(yield(e), klass).valid? }
   end
+  def is_trash key, &block
+    should_equal ->(e){ $trash ||= {};$trash[key] ||= block.call(e) }, ->(e){ block.call(e) }
+  end
 
-  def inspect!
-    [->(e){ puts '>>'; puts e.children.map(&:name); puts e.attributes if e.respond_to? :attributes; false }, ->(e){}]
-  end    
+  # def inspect!
+  #   [->(e){ puts '>>'; puts e.children.map(&:name); puts e.attributes if e.respond_to? :attributes; false }, ->(e){}]
+  # end    
 end
 
 
@@ -167,7 +170,13 @@ module Canon; extend CanonStuff
   end
 
   class Sidebar_left < Validator
-    rules
+    rules has_children_ids([nil, "sidebar-left-div", nil]),
+          has_children_names(["text", "div", "text"]), validate_children
+  end 
+
+  class Sidebar_left_div < Validator
+    rules has_children_ids([nil, "block-tipitaka-0", nil, "block-block-7", nil, "block-block-13", nil, "block-block-6", nil, "block-block-4", nil, "block-tipitaka-2", nil, "block-user-1", nil, "block-user-0", nil]),
+          is_trash(:sidebar_other) { |e| e.css('#block-tipitaka-0').remove; e.text }
   end 
 
   class Table_main < Validator
@@ -175,9 +184,15 @@ module Canon; extend CanonStuff
   end 
 
 
-    # return false unless content.children.count == 1
-    # return false unless children_id(content.children[0]) == %w[sidebar-left table-main]
-    
+    # return false unless children_id(left_sidebar) == %w[sidebar-left-div]
+    # return false unless children_id(sidebar) == ["block-tipitaka-0", "block-block-7", "block-block-13", "block-block-6", "block-block-4", "block-tipitaka-2", "block-user-1", "block-user-0"]
+    # sidebar.css('#block-tipitaka-0').remove
+    # return false unless is_trash :sidebar do sidebar.text end
+    # return false unless children_id(table_main) == ["statement", "main"]
+    # return false unless table_main.children![0].text.strip == 'Tipiṭaka Studies in Theravāda Buddhasāsana'
+    # return false unless children_class(main) == ["breadcrumb", "title", "tabs", "node"]
+    # return false unless is_trash :tabs do tabs.to_s end
+    # return false unless title[title2]
 
   # class Any < Validator
   #   rules
@@ -185,8 +200,7 @@ module Canon; extend CanonStuff
 end
 
 
-p random_page(1000).all? { |page| Canon.valid? page[:html] }
-exit
+p random_page(1000).all? { |page| Canon.valid? page[:html] };exit
 
 if __FILE__ == $0
 
@@ -197,9 +211,10 @@ if __FILE__ == $0
     self
   end
   mock = 'mock'
+  def mock.[] x; 'mock' end
   def mock.children; ['head','body'] end
   raise unless validator.new(mock).valid? == true
-  def mock.children; 123 end
+  def mock.children; '123' end
   raise unless validator.new(mock).valid? == false
 
   #########################################
@@ -209,11 +224,22 @@ if __FILE__ == $0
     self
   end
   mock = 'mock'
+  def mock.[] x; 'mock' end
   def mock.[] x; 'given' end
   raise unless validator.new(mock).valid? == true
-  def mock.[] x; 456 end
+  def mock.[] x; '456' end
   raise unless validator.new(mock).valid? == false
   
+  #########################################
+
+  include Rules
+  trash = is_trash(:any) { |e| e }
+  raise unless trash.is_a? Array
+  raise unless trash.size == 2
+  raise unless trash[0][5] == true
+  raise unless trash[0][5] == true
+  raise unless trash[0][4] == false
+
   #########################################
 
 end
