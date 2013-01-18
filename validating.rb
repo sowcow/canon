@@ -1,14 +1,24 @@
-#encoding: utf-8
-require 'pp'
+# encoding: utf-8
+# require 'pp'
+# require 'ruby2ruby'
 require 'my-sugar'
 require 'nokogiri'
 require_delegation
 require_relative 'canon'
 
+
+module ClassFor
+  def self.[] element
+    (element[:id] || element[:class] || element.name).capitalize
+  end
+end
+
+
 module Rules
-  def should_equal one, two
-    [->(element){ one.call(element) == two.call(element) },
-     ->(element){ puts "failed: #{ one.call(element).inspect } == #{ two.call(element).inspect }" }]
+
+  def should_equal one, two, method = :===
+    [->(element){ one.call(element).send method, two.call(element) },
+     ->(element){ puts "#{ClassFor[element]} failed: #{ one.call(element).inspect } #{method} #{ two.call(element).inspect }" }]
   end
 
   def replies message, result
@@ -17,8 +27,8 @@ module Rules
   def has_attribute name, value
     should_equal ->(e){ e[name] }, ->(e){ value }
   end
-  def returns result, &block
-    should_equal block, ->(e){ result }
+  def returns result, method=:===, &block
+    should_equal ->(e){ result }, block, method
   end  
 
   def has_children *given
@@ -27,6 +37,9 @@ module Rules
   def class_is given
     has_attribute :class, given
   end
+  def id_is given
+    has_attribute :id, given
+  end  
   def has_children_names *given
     returns([given].flatten){ |e| e.children.map_{ name } }
   end
@@ -48,8 +61,7 @@ end
 
 module CanonStuff
   def wrap element
-    klass_name = (element[:class] || element.name).capitalize
-    const_get(klass_name).new element
+    const_get(ClassFor[element]).new element
   end
   def valid? html
     wrap(Nokogiri::HTML(html)).valid?
@@ -68,6 +80,18 @@ module Canon; extend CanonStuff
     def self.rules *a; (@rules ||= []).push *a
     end
     def self.wrap *a; Canon.wrap *a end
+
+    # selector helpers
+    class << self
+      def a_collection elements; elements.children # elements.kind_of?(Enumerable)? elements : 
+      end
+      def ids elements; a_collection(elements).map { |x| x[:id] }
+      end
+      def classes elements; a_collection(elements).map { |x| x[:class] }
+      end
+      def tags elements; a_collection(elements).map &:name
+      end    
+    end
   end
 
   class Document < Validator
@@ -78,11 +102,59 @@ module Canon; extend CanonStuff
 
   class Html < Validator
     rules has_children_names(%w[head body]), validate_children
+  end
+
+  class Head < Validator
+    rules returns(%w[title]) { |e| e.children.map(&:name) - %w[script style link meta] },
+
+          returns(1..3) { |e| navigation(e).keys.count },
+          returns([]) { |e| navigation(e).keys - %w[prev up next] },
+          returns([]) { |e| navigation(e).values.reject {|x| x =~ /^\/tipitaka\/\d/ } },
+
+          returns(/^\d.*| Tipiṭaka Quotation$/) { |e| page_title e }
+
+
+    def self.navigation element=element
+      element.css('link').map do |link|
+        [link[:rel], link[:href]]
+      end.flatten.tap { |x| return Hash[*x].tap &x{ delete 'shortcut icon' } }
+    end
+    def self.page_title element=element
+      element.at('title').inner_html # .content
+    end
+  end
+
+  class Body < Validator
+    rules validate_children, 
+          # returns(%w[header content footer]) { |e| e.children.map{|x|x[:id]} }
+          returns([nil, "header", "content", "footer", nil]) { |e| ids e },
+          returns(["text", "table", "table", "div", "text"]) { |e| tags e }
+  end
+
+  class Text < Validator
+    rules returns(0) { |e| e.children.count }, class_is(nil), id_is(nil)
+
+  end
+
+  class Header < Validator
+    rules
+  end
+
+  class Content < Validator
+    rules
   end  
+
+  class Footer < Validator
+    rules
+  end  
+
+  # class Any < Validator
+  #   rules
+  # end
 end
 
 
-p Canon.valid? random_page[:html]
+p random_page(1000).all? { |page| Canon.valid? page[:html] }
 exit
 
 if __FILE__ == $0
@@ -120,7 +192,7 @@ BEGIN{
   def all_pages filter=ALL
     pages = WTP.get.only!(filter).parts.map { |part| part.pages.map { |p| {part: part, html: p.html} } }.flatten(1)
   end  
-  def random_page; all_pages.sample end
+  def random_page(n=1); all_pages.sample(n) end
 }
 
 
