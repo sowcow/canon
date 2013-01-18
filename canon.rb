@@ -30,6 +30,7 @@ class WTP < Struct.new :parts
 end
 
 module Selectors
+  VINAYA = %w[1V 2V 3V 4V 5V]
   DIGHA = %w[6D 7D 8D]
   MAJJHIMA = %w[9M 10M 11M]
   SAMYUTTA = %w[12S1 12S2 13S3 13S4 14S5]
@@ -54,6 +55,8 @@ if __FILE__ == $0
   all_pages = wtp.parts.map { |x|x.pages.map &:html }.flatten
   raise unless all_pages.count == 20108
   raise unless all_pages.all? { |x|x =~ /doctype/i }
+
+  raise unless ALL.uniq.count == 88
 
   puts 'OK'
 end
