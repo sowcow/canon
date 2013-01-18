@@ -32,7 +32,13 @@ module Rules
   end
   def has_children_classes *given
     returns([given].flatten){ |e| e.children.map { |x| x[:class] } }
-  end  
+  end
+  def check &block
+    returns(true, &block)
+  end
+  def validate_children
+    check { |e| e.children.all? { |x| wrap(x).valid? } }
+  end
 
   def inspect!
     [->(e){ puts '>>'; puts e.children.map(&:name); puts e.attributes if e.respond_to? :attributes; false }, ->(e){}]
@@ -61,11 +67,18 @@ module Canon; extend CanonStuff
     end
     def self.rules *a; (@rules ||= []).push *a
     end
+    def self.wrap *a; Canon.wrap *a end
   end
 
   class Document < Validator
-    rules has_children_names(%w[html html]), has_children_classes(nil,nil)
+    rules has_children_names(%w[html html]),               # don't miss commas!!!!!!!!!!!!!!!!!
+          check { |e| e.children[0].children.count == 0 }, # don't miss commas!!!!!!!!!!!!!!!!!
+          check { |e| self.wrap(e.children[1]).valid? }
   end
+
+  class Html < Validator
+    rules has_children_names(%w[head body]), validate_children
+  end  
 end
 
 
