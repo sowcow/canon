@@ -1,18 +1,132 @@
 #encoding: utf-8
+# require 'active_attr'
+# require 'pry'
+require 'my-sugar'
+require 'nokogiri'
+require_delegation
+require_relative 'canon'
 
+
+module LogFalseAssertations
+
+  [Array, String].each do |klass|
+  refine klass do
+    def == other
+      super.tap { |x| unless x
+        puts "#{self.inspect} <> #{other.inspect}"
+      end }
+    end
+  end
+  end
+
+  # refine String do
+  #   def == other
+  #     p 1;super
+  #   end
+  # end  
+end
+
+# using LogFalseAssertations
+# '' == '123'
+# __END__
+
+module RuleDSL
+
+  def rule name, &check_rule
+    define_method name do |*a|
+      Module.new do
+        define_method :valid? do; super() && check_rule.call(element,*a)
+        end
+      end
+    end
+  end
+end
+
+
+module Rules; extend RuleDSL
+
+  using LogFalseAssertations
+
+  rule :name_is do |element,given|
+    element.name == given
+  end
+  rule :attribute_is do |element,attribute,given|
+    element[attribute] == given
+  end  
+  rule :has_children do |element,*given|
+    element.children.map(&:name) == given
+  end
+
+
+  def class_is given
+    attribute_is :class, given
+  end
+
+
+  def rules *a; prepend *a end
+end
+
+
+
+module Canon
+  class Validator < Struct.new :element; extend Rules
+    def valid?; true end
+  end
+
+  module VinayaAndFourNikayas
+    FILTER = VINAYA + FOUR_NIKAYAS
+    
+    class Document < Validator
+      rules has_children('head','body'), class_is(nil)
+    end
+
+    module_function
+    def wrap element
+      klass_name = (element[:class] || element.name).capitalize
+      const_get(klass_name).new element
+    end
+  end
+end
+
+
+def valid? html, validator = Canon::VinayaAndFourNikayas
+  validator.wrap(Nokogiri::HTML(html)).valid?
+end
+
+p valid? random_page[:html]
+
+
+
+puts 'OK'
+
+
+
+BEGIN{
+  def all_pages filter=ALL
+    pages = WTP.get.only!(filter).parts.map { |part| part.pages.map { |p| {part: part, html: p.html} } }.flatten(1)
+  end  
+  def random_page; all_pages.sample end
+}
+
+__END__
+# BEGIN{ # all_pages method
+
+#   module IncludeAll
+#     def self.include? any; true end
+#   end  
+
+#   def all_pages filter=IncludeAll
+#     pages = WTP.get.only!(filter).parts.map { |part| part.pages.map { |p| {part: part, html: p.html} } }.flatten(1)
+#     # pages.map { |x| FlatPage.new x }
+#   end
+# }
+#############################################################
+__END__
 #############################################################
 #                                                           #
 #   CAUTION: reading this file can be big a waste of time   #
 #                                                           #
 #############################################################
-
-require_relative 'canon'
-require 'my-sugar'
-require_delegation
-require 'pry' # debugging
-
-require 'active_attr'
-require 'nokogiri'
 
 # THIS WAY FOR NOW: extracting invariants like: the pages has only one header
 # alternative: (all nodes ~> those who unchanged? ~> those who are stupid/unused info ~> result!!!)
@@ -284,6 +398,34 @@ def wrap2 element
   klass.new element
 end
 
+def wrap3 element
+  klass_name = element[:class] || element.name
+  klass = Nodes3.const_get klass_name.capitalize
+  klass.new element
+end
+
+ELEMENTS_HAVE_ONLY_ONE_TEXT =->(elements) do
+  elements.all? { |x| x.children.map(&:name) == ['text'] }
+end  
+
+module Nodes3
+  class Paragraphnum < Struct.new :element
+    def valid?
+      ELEMENTS_HAVE_ONLY_ONE_TEXT[[element]]
+    end
+  end
+  class Gatha < Struct.new :element
+    def valid?
+      ELEMENTS_HAVE_ONLY_ONE_TEXT[[element]]
+    end
+  end
+  class Singlecolumn < Struct.new :element
+    def valid?
+      ELEMENTS_HAVE_ONLY_ONE_TEXT[[element]]
+    end
+  end  
+end
+
 module Nodes2
 
   ELEMENTS_HAS_ONLY_ONE_TEXT =->(elements) do
@@ -300,14 +442,16 @@ module Nodes2
   #   end
   # end
 
+
   class Td < Struct.new :element
     def valid?
       # ch = element.children.reject { |x| x.name == 'text' }
       # unless ch.map{|x|x[:class]} - %w[paragraphNum GATHA singleColumn] == []
       #   binding.pry
       # end
-      # ch.map{|x|x[:class]} - %w[paragraphNum GATHA singleColumn] == []
-      true
+      ch.map{|x|x[:class]} - %w[paragraphNum GATHA singleColumn] == [] &&
+          ch.map { |x| wrap3(x).extend(Logger) }.all_{ valid? }
+      # true
     end
   end
 
@@ -405,7 +549,10 @@ module Nodes
   end
   class Endh3 < Struct.new :element; is Kind
     def valid?
-      children(element) == ["span", "text"] && SPANS_HAS_ONLY_ONE_TEXT[element]
+      children(element) - ["span", "text", 'paragraphNum','br'] == [] && SPANS_HAS_ONLY_ONE_TEXT[element]
+      ##################################################
+      #paragraphNumparagraphNumparagraphNumparagraphNumparagraphNumparagraphNum
+      ###################################################
     end
   end  
   class Summary < Struct.new :element; is Kind
@@ -449,7 +596,7 @@ end
 
 begin
   # pages = all_pages MAJJHIMA
-  pages = all_pages FOUR_NIKAYAS
+  pages = all_pages FOUR_NIKAYAS+VINAYA
   p pages.count
   # page = pages.sample
   # raise unless page.is_a? FlatPage
@@ -466,9 +613,10 @@ end #if false
 
 
 collection = ALL
-collection.each { |selector|
+collection.shuffle.each { |selector|
   # puts (all_pages(selector).all?(&:valid?) ? '+':'-') + selector
-  (all_pages(selector).all?(&:valid?)) ? nil : puts("--#{selector}")
+  puts selector
+  (all_pages(selector).all?(&:valid?)) ? nil : puts("---------------#{selector}")
 } if false
 
 # def how_long
