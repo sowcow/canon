@@ -46,6 +46,9 @@ module Rules
   def has_children_classes *given
     returns([given].flatten){ |e| e.children.map { |x| x[:class] } }
   end
+  def has_children_ids *given
+    returns([given].flatten){ |e| e.children.map { |x| x[:id] } }
+  end  
   def check &block
     returns(true, &block)
   end
@@ -94,6 +97,10 @@ module Canon; extend CanonStuff
     end
   end
 
+  class Text < Validator
+    rules returns(0) { |e| e.children.count }, class_is(nil), id_is(nil)
+  end
+
   class Document < Validator
     rules has_children_names(%w[html html]),               # don't miss commas!!!!!!!!!!!!!!!!!
           check { |e| e.children[0].children.count == 0 }, # don't miss commas!!!!!!!!!!!!!!!!!
@@ -105,7 +112,7 @@ module Canon; extend CanonStuff
   end
 
   class Head < Validator
-    rules returns(%w[title]) { |e| e.children.map(&:name) - %w[script style link meta] },
+    rules returns(%w[title]) { |e| tags(e) - %w[script style link meta] },
 
           returns(1..3) { |e| navigation(e).keys.count },
           returns([]) { |e| navigation(e).keys - %w[prev up next] },
@@ -126,12 +133,8 @@ module Canon; extend CanonStuff
 
   class Body < Validator
     rules validate_children, 
-          returns([nil, "header", "content", "footer", nil]) { |e| ids e },
-          returns(["text", "table", "table", "div", "text"]) { |e| tags e }
-  end
-
-  class Text < Validator
-    rules returns(0) { |e| e.children.count }, class_is(nil), id_is(nil)
+          has_children_names(["text", "table", "table", "div", "text"]),
+          has_children_ids([nil, "header", "content", "footer", nil])
   end
 
   class Header < Validator
@@ -145,11 +148,11 @@ module Canon; extend CanonStuff
 
   class Content < Validator
     rules
-  end    
+  end
 
-    # footer.xpath("//script").remove
-    # return false unless footer.text.strip == 
-    # return false unless header.text.strip == ''
+    # return false unless content.children.count == 1
+    # return false unless children_id(content.children[0]) == %w[sidebar-left table-main]
+    
 
   # class Any < Validator
   #   rules
