@@ -126,27 +126,30 @@ module Canon; extend CanonStuff
 
   class Body < Validator
     rules validate_children, 
-          # returns(%w[header content footer]) { |e| e.children.map{|x|x[:id]} }
           returns([nil, "header", "content", "footer", nil]) { |e| ids e },
           returns(["text", "table", "table", "div", "text"]) { |e| tags e }
   end
 
   class Text < Validator
     rules returns(0) { |e| e.children.count }, class_is(nil), id_is(nil)
-
   end
 
   class Header < Validator
-    rules
+    rules returns('') { |e| e.text.strip }
+  end
+
+  class Footer < Validator
+    TEXT = 'Copyright © 2005 - 2012 Dhamma Society - dhammasociety.org. email : worldtipitaka@dhammasociety.org'
+    rules returns(TEXT) { |e| e.xpath("//script").remove; e.text.strip }
   end
 
   class Content < Validator
     rules
-  end  
+  end    
 
-  class Footer < Validator
-    rules
-  end  
+    # footer.xpath("//script").remove
+    # return false unless footer.text.strip == 
+    # return false unless header.text.strip == ''
 
   # class Any < Validator
   #   rules
