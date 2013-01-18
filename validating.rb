@@ -9,7 +9,10 @@ require_relative 'canon'
 
 module ClassFor
   def self.[] element
-    (element[:id] || element[:class] || element.name).capitalize
+    constantize (element[:id] || element[:class] || element.name)
+  end
+  def self.constantize text
+    text.capitalize.gsub '-','_'
   end
 end
 
@@ -55,6 +58,9 @@ module Rules
   def validate_children
     check { |e| e.children.all? { |x| wrap(x).valid? } }
   end
+  def validate_as klass
+    check { |e| wrap(yield(e), klass).valid? }
+  end
 
   def inspect!
     [->(e){ puts '>>'; puts e.children.map(&:name); puts e.attributes if e.respond_to? :attributes; false }, ->(e){}]
@@ -63,8 +69,8 @@ end
 
 
 module CanonStuff
-  def wrap element
-    const_get(ClassFor[element]).new element
+  def wrap element, klass=nil
+    const_get(klass || ClassFor[element]).new element
   end
   def valid? html
     wrap(Nokogiri::HTML(html)).valid?
@@ -108,11 +114,13 @@ module Canon; extend CanonStuff
   end
 
   class Html < Validator
-    rules has_children_names(%w[head body]), validate_children
+    rules has_children_names(%w[head body]), validate_children,
+          class_is(nil), id_is(nil)
   end
 
   class Head < Validator
     rules returns(%w[title]) { |e| tags(e) - %w[script style link meta] },
+          class_is(nil), id_is(nil),
 
           returns(1..3) { |e| navigation(e).keys.count },
           returns([]) { |e| navigation(e).keys - %w[prev up next] },
@@ -134,21 +142,38 @@ module Canon; extend CanonStuff
   class Body < Validator
     rules validate_children, 
           has_children_names(["text", "table", "table", "div", "text"]),
-          has_children_ids([nil, "header", "content", "footer", nil])
+          has_children_ids([nil, "header", "content", "footer", nil]),
+          class_is(nil), id_is(nil)
   end
 
   class Header < Validator
-    rules returns('') { |e| e.text.strip }
+    rules returns('') { |e| e.text.strip }, class_is(nil), id_is('header')
   end
 
   class Footer < Validator
     TEXT = 'Copyright © 2005 - 2012 Dhamma Society - dhammasociety.org. email : worldtipitaka@dhammasociety.org'
-    rules returns(TEXT) { |e| e.xpath("//script").remove; e.text.strip }
+    rules returns(TEXT) { |e| e.xpath("//script").remove; e.text.strip },
+          class_is(nil), id_is('footer')
   end
 
   class Content < Validator
-    rules
+    rules has_children_names(['tr']), validate_as(:ContentSubnode){ |e| e.children[0] },
+          class_is(nil), id_is('content')
   end
+
+  class ContentSubnode < Validator
+    rules validate_children,
+          class_is(nil), id_is(nil), has_children_ids(["sidebar-left", nil, "table-main", nil])
+  end
+
+  class Sidebar_left < Validator
+    rules
+  end 
+
+  class Table_main < Validator
+    rules
+  end 
+
 
     # return false unless content.children.count == 1
     # return false unless children_id(content.children[0]) == %w[sidebar-left table-main]
