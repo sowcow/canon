@@ -1,31 +1,143 @@
 #encoding: utf-8
-# require 'active_attr'
-# require 'pry'
+require 'pp'
 require 'my-sugar'
 require 'nokogiri'
 require_delegation
 require_relative 'canon'
 
+module Rules
+  def should_equal one, two
+    [->(element){ one.call(element) == two.call(element) },
+     ->(element){ puts "failed: #{ one.call(element).inspect } == #{ two.call(element).inspect }" }]
+  end
 
+  def replies message, result
+    should_equal ->(e){ e.send(message) }, ->(e){ result }
+  end
+  def has_attribute name, value
+    should_equal ->(e){ e[name] }, ->(e){ value }
+  end
+  def returns result, &block
+    should_equal block, ->(e){ result }
+  end  
+
+  def has_children *given
+    replies :children, [*given]
+  end
+  def class_is given
+    has_attribute :class, given
+  end
+  def has_children_names *given
+    returns([given].flatten){ |e| e.children.map_{ name } }
+  end
+  def has_children_classes *given
+    returns([given].flatten){ |e| e.children.map { |x| x[:class] } }
+  end  
+
+  def inspect!
+    [->(e){ puts '>>'; puts e.children.map(&:name); puts e.attributes if e.respond_to? :attributes; false }, ->(e){}]
+  end    
+end
+
+
+module CanonStuff
+  def wrap element
+    klass_name = (element[:class] || element.name).capitalize
+    const_get(klass_name).new element
+  end
+  def valid? html
+    wrap(Nokogiri::HTML(html)).valid?
+  end
+end
+
+
+module Canon; extend CanonStuff
+
+  class Validator < Struct.new :element; extend Rules
+
+    def valid?; e = element; rules.all? { |x| x[0].call(e).tap { |f| x[1].call(e) unless f } }
+    end
+    def rules; self.class.instance_variable_get :@rules
+    end
+    def self.rules *a; (@rules ||= []).push *a
+    end
+  end
+
+  class Document < Validator
+    rules has_children_names(%w[html html]), has_children_classes(nil,nil)
+  end
+end
+
+
+p Canon.valid? random_page[:html]
+exit
+
+if __FILE__ == $0
+
+  #########################################
+
+  validator = class TestValidator < Canon::Validator
+    rules has_children('head','body')
+    self
+  end
+  mock = 'mock'
+  def mock.children; ['head','body'] end
+  raise unless validator.new(mock).valid? == true
+  def mock.children; 123 end
+  raise unless validator.new(mock).valid? == false
+
+  #########################################
+
+  validator = class TestValidator2 < Canon::Validator
+    rules class_is('given')
+    self
+  end
+  mock = 'mock'
+  def mock.[] x; 'given' end
+  raise unless validator.new(mock).valid? == true
+  def mock.[] x; 456 end
+  raise unless validator.new(mock).valid? == false
+  
+  #########################################
+
+end
+
+
+BEGIN{
+  def all_pages filter=ALL
+    pages = WTP.get.only!(filter).parts.map { |part| part.pages.map { |p| {part: part, html: p.html} } }.flatten(1)
+  end  
+  def random_page; all_pages.sample end
+}
+
+
+__END__
+  # module VinayaAndFourNikayas
+  #   FILTER = VINAYA + FOUR_NIKAYAS
+  #   class Document < Validator
+  #     rules has_children('head','body'), class_is(nil)
+  #   end
+  #   module_function
+  #   def wrap element
+  #     klass_name = (element[:class] || element.name).capitalize
+  #     const_get(klass_name).new element
+  #   end
+  # end
 module LogFalseAssertations
-
   [Array, String].each do |klass|
   refine klass do
     def == other
+      # caller_info = $oh #caller[3] #[/`.*'/][1..-2]
       super.tap { |x| unless x
+        # puts "#{caller_info}:"
         puts "#{self.inspect} <> #{other.inspect}"
       end }
     end
   end
   end
-
-  # refine String do
-  #   def == other
-  #     p 1;super
-  #   end
-  # end  
 end
-
+using LogFalseAssertations
+__END__
 # using LogFalseAssertations
 # '' == '123'
 # __END__
@@ -35,7 +147,9 @@ module RuleDSL
   def rule name, &check_rule
     define_method name do |*a|
       Module.new do
-        define_method :valid? do; super() && check_rule.call(element,*a)
+        define_method :valid? do
+          $oh = self.class
+          super() && check_rule.call(element,*a)
         end
       end
     end
