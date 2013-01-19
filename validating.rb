@@ -59,8 +59,9 @@ module Rules
     using_module ? check { |e| e.children.all? { |x| using_module.wrap(x).valid? } }
                  : check { |e| e.children.all? { |x| wrap(x).valid? } }
   end
-  def validate_as klass
-    check { |e| wrap(yield(e), klass).valid? }
+  def validate_as klass, using_module=nil
+    using_module ? check { |e| using_module.wrap(yield(e), klass).valid? }
+                 : check { |e| wrap(yield(e), klass).valid? }
   end
   def is_trash key, &block
     should_equal ->(e){ $trash ||= {};$trash[key] ||= block.call(e) }, ->(e){ block.call(e) }
@@ -193,8 +194,27 @@ module Canon; extend CanonStuff
             class_is('title'), id_is(nil)
     end
     class Content < Validator
-      rules has_children_names(['ul'])
-    end     
+      rules has_children_names(['ul']), validate_children(Sidebar_menu_children) # generate method on extend
+    end
+    class Menu < Validator
+      rules returns([]){ |e| tags(e) - ['li'] }, validate_children(Sidebar_menu_children), # generate method on extend
+            returns([]){ |e| classes(e) - %w[collapsed expanded leaf] },
+            class_is('menu'), id_is(nil)
+    end
+    class Collapsed < Validator
+      rules has_children_names(['a','a'])
+    end
+
+    class Expanded < Validator                             # recurse!!!!???????
+      rules has_children_names(['a','a','ul']), validate_as(:Menu,Sidebar_menu_children){ |e| e.children[2] } # generate method on extend
+    end
+    # class ExpandedUl < Validator
+    #   rules returns([]){ |e| tags(e) - ['li'] }, returns([]){ |e| classes(e) - %w[collapsed expanded leaf] }
+    # end
+
+    class Leaf < Validator
+      rules has_children_names(['a','a'])
+    end
   end
   class Sidebar_menu < Validator
     rules returns([]) { |e| ids(e) - [nil] },
