@@ -35,7 +35,7 @@ module Rules
   end  
 
   def has_children *given
-    replies :children, [*given]
+    returns(given) { |e| e.children.map { |x| ClassFor[x] }}
   end
   def tag_is given
     replies :name, given
@@ -297,10 +297,12 @@ module Canon; extend CanonStuff
   end
 
   class MainContent < Validator
-    rules has_children_names(["div", "div", "div", "script", "div"]),
-          has_children_classes([nil, nil, nil, nil, "tipitaka-navigation"]),
-          has_children_ids([nil, "ajax_loader", "tipitakaBodyWrapper", nil, nil])
+    rules has_children_names("div", "div", "div", "script", "div"),
+          has_children_classes(nil, nil, nil, nil, "tipitaka-navigation"),
+          has_children_ids(nil, "ajax_loader", "tipitakaBodyWrapper", nil, nil),
+          has_children("Div", "Ajax_loader", "Tipitakabodywrapper", "Script", "Tipitaka_navigation")
   end
+
 
 
   # return false unless children(main_node) == ["span", "span", "div", "text", "a", "text"]
