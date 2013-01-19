@@ -205,12 +205,12 @@ module Canon; extend CanonStuff
       rules has_children_names(['a','a'])
     end
 
-    class Expanded < Validator                             # recurse!!!!???????
-      rules has_children_names(['a','a','ul']), validate_as(:Menu,Sidebar_menu_children){ |e| e.children[2] } # generate method on extend
+    class Expanded < Validator                             # recurse...
+      rules has_children_names(['a','a','ul']), validate_as(:Menu,Sidebar_menu_children){ |e| e.children[2] },
+            has_children_classes([nil,nil,'menu'])
+            # is it valuable to know how deep this recursion can be?
+            # validate a[href]?
     end
-    # class ExpandedUl < Validator
-    #   rules returns([]){ |e| tags(e) - ['li'] }, returns([]){ |e| classes(e) - %w[collapsed expanded leaf] }
-    # end
 
     class Leaf < Validator
       rules has_children_names(['a','a'])
