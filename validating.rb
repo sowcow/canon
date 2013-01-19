@@ -55,8 +55,9 @@ module Rules
   def check &block
     returns(true, &block)
   end
-  def validate_children
-    check { |e| e.children.all? { |x| wrap(x).valid? } }
+  def validate_children using_module=nil
+    using_module ? check { |e| e.children.all? { |x| using_module.wrap(x).valid? } }
+                 : check { |e| e.children.all? { |x| wrap(x).valid? } }
   end
   def validate_as klass
     check { |e| wrap(yield(e), klass).valid? }
@@ -176,8 +177,32 @@ module Canon; extend CanonStuff
 
   class Sidebar_left_div < Validator
     rules has_children_ids([nil, "block-tipitaka-0", nil, "block-block-7", nil, "block-block-13", nil, "block-block-6", nil, "block-block-4", nil, "block-tipitaka-2", nil, "block-user-1", nil, "block-user-0", nil]),
-          is_trash(:sidebar_other) { |e| e.css('#block-tipitaka-0').remove; e.text }
+          is_trash(:sidebar_other) { |e| x=e.dup; menu(x).remove; x.text },
+          validate_as(:Sidebar_menu){ |e| menu(e) }
+
+    def self.menu element
+      element.at('#block-tipitaka-0')
+    end          
+  end
+
+  module Sidebar_menu_children; extend CanonStuff
+    Text = Canon::Text
+
+    class Title < Validator
+      rules has_children_names(['text']), has_children_classes([nil]), has_children_ids([nil]),
+            class_is('title'), id_is(nil)
+    end
+    class Content < Validator
+      rules has_children_names(['ul'])
+    end     
+  end
+  class Sidebar_menu < Validator
+    rules returns([]) { |e| ids(e) - [nil] },
+          returns([]) { |e| tags(e) - %w[text h2 div] },
+          returns([]) { |e| classes(e) - %w[title content] - [nil] },
+          validate_children(Sidebar_menu_children)
   end 
+
 
   class Table_main < Validator
     rules
@@ -411,6 +436,9 @@ class Nokogiri::XML::Element
 end
 
 class FlatPage; is Model
+  ######################
+  ##    interface     ##
+  ######################  
   attribute :part
   attribute :html
 
