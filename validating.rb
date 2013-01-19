@@ -37,6 +37,9 @@ module Rules
   def has_children *given
     replies :children, [*given]
   end
+  def tag_is given
+    replies :name, given
+  end; alias name_is tag_is
   def class_is given
     has_attribute :class, given
   end
@@ -209,7 +212,7 @@ module Canon; extend CanonStuff
       rules has_children_names(['a','a','ul']), validate_as(:Menu,Sidebar_menu_children){ |e| e.children[2] },
             has_children_classes([nil,nil,'menu'])
             # is it valuable to know how deep this recursion can be?
-            # validate a[href]?
+            # IIVTK: validate a-href-s?
     end
 
     class Leaf < Validator
@@ -225,18 +228,42 @@ module Canon; extend CanonStuff
 
 
   class Table_main < Validator
+    rules has_children_ids([nil, "statement", nil, "main", nil]),
+          has_children_names(["text", "div", "text", "div", "text"]), validate_children
+  end
+
+  class Statement < Validator
+    rules has_children_names(%w[text]), validate_children,
+          class_is(nil), id_is('statement'), tag_is('div'),
+          replies(:text, 'Tipiṭaka Studies in Theravāda Buddhasāsana')
+          # some other texts can be described?
+  end
+
+  class Main < Validator
+    rules has_children_names(["text", "div", "text", "h1", "text", "div", "text", "div", "text"]),
+          has_children_classes([nil, "breadcrumb", nil, "title", nil, "tabs", nil, "node", nil]),
+          has_children_ids([nil, nil, nil, nil, nil, nil, nil, nil, nil]),
+          class_is(nil), id_is('main'), tag_is('div'), # *attributes({id: ..., tag: ..., ...})
+          validate_children
+  end
+
+  class Breadcrumb < Validator
     rules
-  end 
+  end
+
+  class Title < Validator
+    rules
+  end
+
+  class Tabs < Validator
+    rules is_trash(:tabs, &:to_s)
+  end  
+
+  class Node < Validator
+    rules
+  end   
 
 
-    # return false unless children_id(left_sidebar) == %w[sidebar-left-div]
-    # return false unless children_id(sidebar) == ["block-tipitaka-0", "block-block-7", "block-block-13", "block-block-6", "block-block-4", "block-tipitaka-2", "block-user-1", "block-user-0"]
-    # sidebar.css('#block-tipitaka-0').remove
-    # return false unless is_trash :sidebar do sidebar.text end
-    # return false unless children_id(table_main) == ["statement", "main"]
-    # return false unless table_main.children![0].text.strip == 'Tipiṭaka Studies in Theravāda Buddhasāsana'
-    # return false unless children_class(main) == ["breadcrumb", "title", "tabs", "node"]
-    # return false unless is_trash :tabs do tabs.to_s end
     # return false unless title[title2]
 
   # class Any < Validator
