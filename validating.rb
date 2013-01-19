@@ -247,27 +247,118 @@ module Canon; extend CanonStuff
           validate_children
   end
 
-  class Breadcrumb < Validator
-    rules
-  end
-
   class Title < Validator
-    rules
+    rules has_children_names("text"), returns(/^[\d\s].*[^\d]$/){ |e| title e } 
+          # title can be  "3.1.4 "," Suddha"  etc...
+    def self.title element
+      element.text
+    end
   end
 
   class Tabs < Validator
     rules is_trash(:tabs, &:to_s)
   end  
 
+  class Breadcrumb < Validator
+    rules returns([]) { |e| tags(e) - %w[a text] }, validate_children
+
+    def self.breadcrumbs element
+      raise :todo #######################################################################
+    end
+  end
+  class A < Validator
+    rules has_children_names("text"), validate_children,
+          class_is(nil), id_is(nil)
+  end
+
   class Node < Validator
-    rules
-  end   
+    rules has_children_names(["text", "span", "text", "span", "text", "div", "text", "a", "text"]),
+          has_children_classes([nil, "submitted", nil, "taxonomy", nil, "content", nil, nil, nil]),
+          has_children_ids([nil, nil, nil, nil, nil, nil, nil, nil, nil]),
+          is_trash(:node0){ |e| e.children[0].to_s },
+          is_trash(:node1){ |e| e.children[1].to_s },
+          is_trash(:node2){ |e| e.children[2].to_s },
+          is_trash(:node3){ |e| e.children[3].to_s },
+          is_trash(:node4){ |e| e.children[4].to_s },
+          # is_trash(:node5){ |e| e.children[5].to_s },# div.content
+          is_trash(:node6){ |e| e.children[6].to_s },
+          # is_trash(:node7){ |e| e.children[7].to_s } # user
+          # is_trash(:node8){ |e| e.children[8].to_s } # date
+          returns(/^user\//){ |e| last_edited(e)[:href] },
+          check { |e| not last_edited(e)[:name].empty? },
+          check { |e| not last_edited(e)[:at].empty? },
+          validate_as(:MainContent){ |e| e.children[5] }
+
+    def self.last_edited element
+      user = element.children[7]
+      date = element.children[8].text.strip
+      {name: user.text, href: user[:href], at: date}
+    end
+  end
+
+  class MainContent < Validator
+    rules has_children_names(["div", "div", "div", "script", "div"]),
+          has_children_classes([nil, nil, nil, nil, "tipitaka-navigation"]),
+          has_children_ids([nil, "ajax_loader", "tipitakaBodyWrapper", nil, nil])
+  end
 
 
-    # return false unless title[title2]
+  # return false unless children(main_node) == ["span", "span", "div", "text", "a", "text"]
+  # return false unless children_class(main_node) == ["submitted", "taxonomy", "content", nil, nil, nil]
+  # return false unless is_trash :span0 do main_node.children![0].to_s end
+  # return false unless is_trash :span1 do main_node.children![1].to_s end
+  # return false unless is_trash :span3 do main_node.children![3].to_s end # "Last edited by:"
+  # return false unless last_edited_by[:href] =~ /^user\//
+  # return false if last_edited_by[:date].empty? || last_edited_by[:name].empty?
 
+  # return false unless children_class(content_node) == [nil, nil, nil, "tipitaka-navigation"]
+  # return false unless children_id(content_node) ==  [nil, "ajax_loader", "tipitakaBodyWrapper", nil]
+  # return false unless children(content_node) ==  ["div", "div", "div", "div"]
+  # return false unless is_trash :auth do content_node.children![0].to_s end
+  # return false unless is_trash :ajax_loader do content_node.children![1].to_s end
+  # # return false unless is_trash :ajust_height do content_node.children![...].to_s end # script tags already removed?...
+  # return false unless children_class(nav) == ["menu", "page-links clear-block"] ||
+  #                     children_class(nav) == ["page-links clear-block"]
+  # return false unless children(body_wrapper) == ["div"]
+  # return false unless children_class(body_wrapper) == ["tipitakaNode"]
+  # known = %w[hidden quotation CENTER ENDH3 SUMMARY ENDBOOK]
+  # got = children_class(tipitaka_node)
+  # # puts (got - known) if (got - known).any?
+  # # some_times { p (got - known) }
+  # return false if (got - known).any?
+  # they = tipitaka_node.children!
+  # return false unless they.map {|x| wrap(x).extend(Logger) }.all? { |x|x.valid? }  
+  ######################################################33
+  # def title2
+  #   h1_title.text # raise :implement_using_title
+  # end   
+  # ######################
+  # ##  TODO: use .nav  ##
+  # ######################
+  # def navigation
+  #   head_tag.css('link').map do |link|
+  #     [link[:rel], link[:href]]
+  #   end.flatten.tap { |x| return Hash[*x].tap &x{ delete 'shortcut icon' } }
+  # end
+  # def menu
+  #   raise :implement_using_block_0
+  # end
+  # def breadcrumbs
+  #   raise :implement_using_breadcrumb
+  # end  
+  # def last_edited_by
+  #   user = main_node.children![4]
+  #   date = main_node.children![5].text.strip
+  #   {name: user.text, href: user[:href], date: date}
+  # end  
+
+
+  # return false unless title[title2] # OTHER LEVEL ?
+  #
   # class Any < Validator
-  #   rules
+  #   rules has_children_names([]),
+  #         has_children_classes(),
+  #         has_children_ids() 
   # end
 end
 
