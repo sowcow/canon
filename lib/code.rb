@@ -19,5 +19,25 @@ if __FILE__ == $0
   raise unless Code[example].count == 5
   raise unless Code[example].all? { |x| x.strip == x }
 
+  example = <<-END
+  END
+  raise unless Code[example].count == 0
+
+  example = <<-END
+    one == 1
+  END
+  raise unless Code[example].count == 1
+
+  example = <<-END
+    one == 1;
+  END
+  raise unless Code[example].count == 1  
+
+  example = <<-END
+    one == 1
+    two == 2
+  END
+  raise unless Code[example].count == 2
+
   puts 'OK'
 end
