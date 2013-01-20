@@ -1,0 +1,11 @@
+class HashStruct
+  def self.new(*args)
+    Struct.new(*args) do
+      def initialize(hash)
+        super( *self.class.members.map{|k| hash[k] } )
+      end
+    end
+  end
+end
+
+def stub hash; HashStruct.new(*hash.keys).new(hash) end

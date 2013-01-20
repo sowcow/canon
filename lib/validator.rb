@@ -25,7 +25,7 @@ end
 
 
 if __FILE__ == $0
-  require 'ostruct'; def stub param; OpenStruct.new param end
+  load 'test_helper'
 
   module Document; validator
     spec "children.count == 2"
@@ -43,9 +43,7 @@ if __FILE__ == $0
 
   raise unless Document::Html.error?(stub(children: [1,2], name: 'any')) == false
 
-  mock = 'mock'
-  def mock.children; [1,2] end
-  raise unless Document::Html.error?(mock) == [:error, "name == 'any'"]
+  raise unless Document::Html.error?(stub(children: [1,2])) == [:error, "name == 'any'"]
 
 
   puts 'OK'

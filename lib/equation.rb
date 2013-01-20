@@ -37,7 +37,7 @@ end
 
 
 if __FILE__ == $0
-  require 'ostruct'; def stub param; OpenStruct.new param end
+  load 'test_helper'
 
 
   raise unless Eq('a == 2').eval(stub(a: 2)) == true
@@ -58,11 +58,8 @@ if __FILE__ == $0
   raise unless Eq('self == "ab"').result('abc') == [false, '"abc" == "ab"']
     
   raise unless Eq("name == 'any'").result([1,2]) == [:error, "name == 'any'"]
-  raise unless Eq("name == 'any'").result(stub(children: [1,2])) == [false, 'nil == "any"'] #openstruct...
+  raise unless Eq("name == 'any'").result(stub(children: [1,2])) == [:error, "name == 'any'"]
 
-  mock = 'mock'
-  def mock.children; [1,2] end
-  raise unless Eq("name == 'any'").result(mock) == [:error, "name == 'any'"] #openstruct...
 
   puts 'OK'
 end
