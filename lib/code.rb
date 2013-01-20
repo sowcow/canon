@@ -4,7 +4,7 @@ class Code
   attr_reader :code
 
   def each &block
-    code.split(/[;\n]/).map(&:strip).each &block
+    code.split(/[;\n]/).map(&:strip).reject(&:empty?).each &block
   end
   include Enumerable
 end
@@ -38,6 +38,15 @@ if __FILE__ == $0
     two == 2
   END
   raise unless Code[example].count == 2
+
+  example = '
+    one == 1
+    two == 2'
+  raise unless Code[example].count == 2  
+
+  example = 'one == 1
+             two == 2'
+  raise unless Code[example].count == 2   
 
   puts 'OK'
 end
