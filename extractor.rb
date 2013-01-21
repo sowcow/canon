@@ -20,16 +20,17 @@ Dir['lib/*.rb'].each { |x| require_relative x }
 require 'pp'
 require 'pry'
 load 'lib/test_helper'
+require 'yaml'
 
 
 
 measurements = %w"to_s text children.count".map { |x| Measurement[x] }
 
 model = Extractor.new measurements
-pages(300).each do |page|
+pages(1000).each do |page|
   model.feed page
 end
-pp model.state
+File.write 'output.yml', YAML.dump(model.state)
 
 # model = Extractor.new measurements
 # model.feed ''
