@@ -45,7 +45,10 @@ class Selector
     node.respond_to?(:parent) ? Selector[node.parent] : []
   end
   def this
-    [[node.name, node[:id]].compact * '#', node[:class]].compact * '.'
+    name = node.name
+    id = node[:id] =~ /\d/ ? nil : node[:id]
+    klass = node[:class] =~ /\d/ ? nil : node[:class]
+    [[node.name, id].compact * '#', klass].compact * '.'
   end
   def inspect; to_s.inspect end
 end
@@ -113,6 +116,11 @@ if __FILE__ == $0
   def sub_node.name; 'sub' end
   $node = node; def sub_node.parent; $node end
   interest = [Measurement['name'],Measurement['value']]
+
+  stupid_node1 = node.clone
+  def stupid_node1.[] key; {id: 'lol123', :class => 'omg456'}[key] end
+  normal_node = node.clone
+  def normal_node.[] key; {id: 'id', :class => 'any'}[key] end
   # stubs...
 
   raise unless %w"to_s text children.count".map { |x| Measurement[x] }.count == 3
@@ -124,10 +132,15 @@ if __FILE__ == $0
   raise unless Scan[node, [Measurement['name'],Measurement['value']]].hash.keys == ['name','value']
   raise unless Scan[node, [Measurement['name'],Measurement['value']]].hash.values == ['hey',123]
   
+
   raise unless Selector[node].to_s == 'hey'
   raise unless Selector[node].to_a == ['hey']
   raise unless Selector[sub_node].to_a == ['hey','sub']
   raise unless Selector[sub_node].to_s == 'hey > sub'
+
+  raise unless Selector[normal_node].to_s == 'hey#id.any'
+  raise unless Selector[stupid_node1].to_s == 'hey'
+
 
   raise unless NodeInfo[node, interest].hash == {"hey"=>{"name"=>"hey", "value"=>123}}
   raise unless NodeInfo[node, interest].key == "hey"
