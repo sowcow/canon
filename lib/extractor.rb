@@ -54,7 +54,12 @@ class Selector
 end
 
 
-class Measurement
+class KeyValue
+  def initialize key, value; @key, @value = key, value end
+end
+
+
+class Measurement#s
   def initialize given
     case given
     when String
@@ -74,6 +79,11 @@ class Measurement
 
   def name; @name end
   def scan node; @proc[node] end
+  # def scan node
+  #   proc = @proc
+  #   ->(state){
+  #   }
+  # end
 end
 
 class Extractor #; is Model(:interest, ) # *init_params, {procs / state}

@@ -11,6 +11,10 @@
 # remove scripts?
 # element exist on all pages?
 # different selectors?
+# attributes
+# regexp_for if length < 1000 ?
+# do not traverse nodes where "..."
+# >1 passes 1st: delete all text ~ same
 
 require 'my-sugar'
 require_delegation
@@ -26,12 +30,13 @@ require 'yaml'
 
 measurements = %w"to_s text children.count".map { |x| Measurement[x] }
 
-model = Extractor.new measurements
-pages(1000).each do |page|
-  model.feed page
+[5000].each do |i|
+  model = Extractor.new measurements
+  pages(i).each do |page|
+    model.feed page
+  end
+  File.write %'output#{i}.yml', YAML.dump(model.state)
 end
-File.write 'output.yml', YAML.dump(model.state)
-
 # model = Extractor.new measurements
 # model.feed ''
 # pp model.state
