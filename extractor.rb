@@ -15,11 +15,13 @@
 # regexp_for if length < 1000 ?
 # do not traverse nodes where "..."
 # >1 passes 1st: delete all text ~ same
+# on all pages?
 
 require 'my-sugar'
 require_delegation
 require_relative 'canon'
 Dir['lib/*.rb'].each { |x| require_relative x }
+require 'nokogiri'
 
 require 'pp'
 require 'pry'
