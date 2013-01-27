@@ -1,3 +1,9 @@
+#
+#
+#  This all is crap; use Testdo::Capture + require 'sourcify'; proc.to_source
+#
+#
+
 module LastEquation
   classes = [Fixnum, Range, String, NilClass] # << add classes here
 
@@ -59,7 +65,6 @@ if __FILE__ == $0
     
   raise unless Eq("name == 'any'").result([1,2]) == [:error, "name == 'any'"]
   raise unless Eq("name == 'any'").result(stub(children: [1,2])) == [:error, "name == 'any'"]
-
 
   puts 'OK'
 end

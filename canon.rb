@@ -21,6 +21,10 @@ class WTP < Struct.new :parts
     marshal_load 'canon'
   end
 
+  def self.pages count
+    get.parts.map { |x|x.pages.map &:html }.flatten.sample(count)
+  end
+
   def only! selector
     parts.select! { |x| [*selector].include? x.name }
     self
@@ -57,6 +61,12 @@ if __FILE__ == $0
   raise unless all_pages.all? { |x|x =~ /doctype/i }
 
   raise unless ALL.uniq.count == 88
+
+require 'testdo'
+test do
+  WTP.pages(10).count === 10
+  WTP.pages(10).all? { |x| x =~ /doctype/i }
+end
 
   puts 'OK'
 end

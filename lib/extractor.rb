@@ -2,39 +2,45 @@ require_relative 'model'
 require_relative 'rule'
 require_relative 'selector'
 
-
-class Extractor; is Model(:rule_set, state: {})
-  def feed nodes
-    nodes.each do |node|
-      selector = Selector[node].to_s
-      (state[selector] ||= rule_set.instantiate).each { |rule| rule.feed(node, state[selector]) }
+                            #block!
+class Extractor; is Model(:rule_set!, state: {})
+  def feed *nodes
+    [*nodes].each do |node|
+      (state[Selector[node].to_s] ||= rule_set.call).feed node
     end
   end
 end
+def Extractor *a,&b; Extractor.new *a,&b end
 
 
 if __FILE__ == $0
-  load 'test_helper'
+  # load 'test_helper'
+  require 'ostruct'; stub =->(a){ OpenStruct.new a }
+  require 'testdo'
+  test do
 
+  node = stub[text: '123', name: 'div']
+  node2 = stub[text: '12', name: 'div']
+  Selector[node].to_s === 'div'
 
-  rule_set = Rules SimpleRule, 'text'
-  e = Extractor[rule_set]
-  node = stub(text: '123', name: 'div'); def node.[] any; nil end
-  node2 = stub(text: '12', name: 'div'); def node2.[] any; nil end
+  e = Extractor { SimpleRule['text'] }
+  e.state === {}
 
-  raise unless e.state == {}
-  e.feed [node]
-  raise unless e.state['div'][0].state == '123'
-  raise unless e.state['div'][0].instance_eval{@name} == 'text'
-  e.feed [node]
-  raise unless e.state['div'][0].state == '123'
-  raise unless e.state['div'][0].instance_eval{@name} == 'text'
+  e.feed node
+  e.state['div'].name === ['text']
+  e.state['div'].state === ['123']
+  
+  e.feed node
+  e.state['div'].name === ['text']
+  e.state['div'].state === ['123']
 
-  e.feed [node2]
-  raise unless e.state['div'].count == 0
-
-
-  puts 'OK'
+  e.feed node2
+  e.state['div'].name === []
+  e.feed node2
+  e.state['div'].name === []
+  e.feed node
+  e.state['div'].name === []
+end
 end
 
 __END__

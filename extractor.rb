@@ -16,6 +16,10 @@
 # do not traverse nodes where "..."
 # >1 passes 1st: delete all text ~ same
 # on all pages?
+# [:class/:id] if =~ /d/
+# recursive ul > li
+
+# tap_ &x
 
 require 'my-sugar'
 require_delegation
@@ -29,16 +33,37 @@ load 'lib/test_helper'
 require 'yaml'
 
 
-
-measurements = %w"to_s text children.count".map { |x| Measurement[x] }
-
-[5000].each do |i|
-  model = Extractor.new measurements
-  pages(i).each do |page|
-    model.feed page
+def process model, pages
+  pages.each do |page|
+    Nokogiri::HTML(page).traverse do |node|
+      model.feed node
+    end
   end
-  File.write %'output#{i}.yml', YAML.dump(model.state)
+  model.state
 end
+
+
+# class CaseNode < CommandRule
+#   def act value, node
+#     case value
+#     when String
+
+#     when Numeric
+#     when Array
+#     else
+#       raise 'unknown type of value given!'
+#     end
+#   end
+# end
+
+
+[10].each do |i|
+  model = Extractor { Compose *%w"to_s text children.count".map { |x| SimpleRule[x] }}
+  data = process(model, WTP.pages(i))
+  data = Hash[data.map{|k,v| [k, v.to_hash] }]
+  File.write %'output#{i}.yml', YAML.dump(data)
+end
+
 # model = Extractor.new measurements
 # model.feed ''
 # pp model.state
@@ -48,9 +73,3 @@ end
 # pp model.state
 # model.feed '<p>2<b>3</b></p>'
 # pp model.state
-
-BEGIN{
-  def pages count
-    WTP.get.parts.map_{ pages.map &:html }.flatten.sample(count)
-  end
-}
