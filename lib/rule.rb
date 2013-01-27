@@ -66,7 +66,9 @@ end
 
 class RangeRule < CommandRule
   def act value
-    self.state = Range.new [state.min,convert(value)].min, [state.max,convert(value)].max
+    unless state.include? value # untested line :]
+      self.state = Range.new [state.min,convert(value)].min, [state.max,convert(value)].max
+    end
   # rescue
   #   delete! # bad values for range?
   end
@@ -94,6 +96,48 @@ class DifferenceRule < CommandRule
   end  
 end
 
+class RegexpRule < CommandRule
+  def act value
+    unless value =~ to_re
+      update_state value
+    end
+  end
+  def to_re
+    head, tail, full = state[:head], state[:tail], state[:full]
+    full ? /^#{Regexp.escape head}.*$/m : /^#{Regexp.escape head}.*#{Regexp.escape tail}$/m
+  end
+  def assign_state value
+    super
+    self.state = {}
+    self.state[:head] = value
+    self.state[:tail] = value
+    state[:full] = true
+  end
+
+  def update_state value
+    state[:head] = head(state[:head], value)
+    state[:tail] = tail(state[:tail], value)
+    state[:full] = value.size == state[:head].size
+    raise "wtf with regexp: #{to_re} !~ #{value}" unless to_re =~ value
+  end
+
+  def to_hash
+    {name => to_re}
+  end
+
+  private
+  def head str1, str2
+    str2 = str2.chars
+    str1.chars.take_while { |c| c == str2.shift }.join
+  end
+  def tail str1, str2
+    head(str1.reverse, str2.reverse).reverse
+  end
+  # tests in regexp_for
+end
+
+
+
 module Chained
   def replace_with! klass, values = [*state]
     new = klass.new name, getter
@@ -106,13 +150,27 @@ module Chained
     case
     when self.class == SimpleRule && state != value
       replace_with! SetRule, [state,value]
+
     when self.class == SetRule && state.size == 10 && ! state.include?(value)
-      replace_with! RangeRule, [*state,value]
+      case value
+      when Numeric then replace_with! RangeRule, [*state,value]
+      when Array #&& [*state].all?&x{ is_a? Array }
+        replace_with! DifferenceRule, [[*state].flatten,value]
+      when String #&& [*state].all?&x{ is_a? Array }
+        replace_with! RegexpRule, [*state, value]#, #[[*state],value]
+      else
+        raise 'wtf!'
+      end
     else super end
   end
 end
 # refactoring fixed behavior...
 
+class FlexibleRule < SimpleRule
+  def self.new *a
+    SimpleRule.new(*a).tap &x{ extend Chained }
+  end
+end
 
 if __FILE__ == $0
 require 'testdo'
@@ -189,7 +247,7 @@ test do
   rule.feed '-11'
   rule.state === [-11..11]   
 
-  rule = DifferenceRule['tap{}'].tap &x{ extend Chained }
+  rule = DifferenceRule['tap{}'] #.tap &x{ extend Chained }
   rule.feed [1,1,1,1]
   rule.state === [1]
   rule.feed [1]
@@ -200,6 +258,107 @@ test do
   rule.state === [1,2,3]
   rule.feed [1,2,1,2,3,1,2,3]
   rule.state === [1,2,3]
+
+  rule = SetRule['tap{}'].tap &x{ extend Chained }
+  rule.feed [1,2]
+  rule.state === [Set[[1,2]]]
+  rule.feed [2,1]
+  rule.state === [Set[[1,2],[2,1]]]
+  8.times.map { |i| [rand(1..2)] * i }.each { |x| rule.feed [x] }
+  rule.state.map(&:class) === [Set]
+  rule.state.map(&:size) === [10]
+  rule.feed [1,2,3]
+  rule.state === [*1..3] # DifferenceRule now
+
+  rule = RegexpRule['tap{}']
+  rule.feed 'abcde'
+  rule.to_re === [/^abcde.*$/m]
+  rule.feed 'abcd'
+  rule.to_re === [/^abcd.*$/m]
+  rule.feed 'abacd'
+  rule.to_re === [/^ab.*$/m]
+
+  rule = RegexpRule['tap{}']
+  rule.feed 'abcde'
+  rule.to_re === [/^abcde.*$/m] # abcde is better
+  rule.feed 'abde'
+  rule.to_re === [/^ab.*de$/m]
+  rule.feed 'acde'
+  rule.to_re === [/^a.*de$/m]
+  rule.feed 'acce'
+  rule.to_re === [/^a.*e$/m]
+  rule.feed 'cc'
+  rule.to_re === [/^.*$/m]
+
+  rule = RegexpRule['tap{}']
+  rule.feed 'aaaaa'  
+  rule.to_re === [/^aaaaa.*$/m]
+  rule.feed 'aaa'  
+  rule.to_re === [/^aaa.*$/m] # aa.*a is better
+  rule.feed 'aba'  
+  rule.to_re === [/^a.*a$/m] # magic
+  rule.feed 'aa'  
+  rule.to_re === [/^a.*a$/m]
+  rule.feed 'a'  
+  rule.to_re === [/^a.*$/m]
+  rule.feed ''  
+  rule.to_re === [/^.*$/m]
+
+
+  rule = SetRule['tap{}'].tap &x{ extend Chained }
+  # (-10..-1).map { |x| x=(-x*2)+2; 'a'*x + 'b'*x }.each do |food|
+  20.downto(11).map { |x| 'a'*x + 'b'*x }.each do |food|
+    rule.feed food
+    rule.state.map(&:class) === [Set]
+  end
+  rule.state.map(&:size) === [10]  
+
+  rule.feed 'aabb'
+  rule.to_re === [/^aa.*bb$/m]
+  rule.feed 'aa'
+  rule.to_re === [/^aa.*$/m]
+
+
+  rule = SimpleRule['tap{}'].tap &x{ extend Chained }
+  rule.feed 'a'*21 + 'b'*21
+  rule.state.map(&:class) === [String]
+
+  20.downto(12).map { |x| 'a'*x + 'b'*x }.each do |food|
+    rule.feed food
+    rule.state.map(&:class) === [Set]
+  end
+  rule.state.map(&:size) === [10]  
+
+  rule.feed 'aabb'
+  rule.to_re === [/^aa.*bb$/m]
+  rule.feed 'aa'
+  rule.to_re === [/^aa.*$/m]
+
+
+  rule = FlexibleRule['tap{}'] #.tap &x{ extend Chained }
+  rule.feed 'a'*21 + 'b'*21
+  rule.state.map(&:class) === [String]
+
+  20.downto(12).map { |x| 'a'*x + 'b'*x }.each do |food|
+    rule.feed food
+    rule.state.map(&:class) === [Set]
+  end
+  rule.state.map(&:size) === [10]  
+
+  rule.feed 'aabb'
+  rule.to_re === [/^aa.*bb$/m]
+  rule.feed 'aa'
+  rule.to_re === [/^aa.*$/m]  
+
+
+  # rule.state === [Set[[1,2]]]
+  # rule.feed [2,1]
+  # rule.state === [Set[[1,2],[2,1]]]
+  # 8.times.map { |i| [rand(1..2)] * i }.each { |x| rule.feed [x] }
+  # rule.state.map(&:class) === [Set]
+  # rule.state.map(&:size) === [10]
+  # rule.feed [1,2,3]
+  # rule.state === [*1..3] # DifferenceRule now  
 end
 end
 

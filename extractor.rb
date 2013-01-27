@@ -19,6 +19,8 @@
 # [:class/:id] if =~ /d/
 # recursive ul > li
 
+# <li class="leaf" nid="271056"
+
 # tap_ &x
 
 require 'my-sugar'
@@ -42,26 +44,34 @@ def process model, pages
   model.state
 end
 
+class Nokogiri::XML::Node
+  def children_tags
+    children.map &:name
+  end
+  def children_classes
+    children.map &x{ self[:class] }
+  end
+  def children_ids
+    children.map &x{ self[:id] }
+  end
+  # def children_count
+  #   children.count
+  # end  
+  # alias html to_html
+  # def text
+  #   super.to_s
+  # end
+end
 
-# class CaseNode < CommandRule
-#   def act value, node
-#     case value
-#     when String
+MEASUREMENTS = %w"to_html text.to_s children.count children_tags children_classes children_ids"
 
-#     when Numeric
-#     when Array
-#     else
-#       raise 'unknown type of value given!'
-#     end
-#   end
-# end
-
-
-[10].each do |i|
-  model = Extractor { Compose *%w"to_s text children.count".map { |x| SimpleRule[x] }}
+# psych have problems with '123.'
+[50].each do |i|
+  model = Extractor { Compose *MEASUREMENTS.map { |x| FlexibleRule[x] }}
   data = process(model, WTP.pages(i))
   data = Hash[data.map{|k,v| [k, v.to_hash] }]
   File.write %'output#{i}.yml', YAML.dump(data)
+  p "finished: #{i}"
 end
 
 # model = Extractor.new measurements

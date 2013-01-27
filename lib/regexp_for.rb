@@ -41,5 +41,10 @@ if __FILE__ == $0
   raise unless regexp_for(['123', '123']) =~ '123'
   raise unless ANY_STRING =~ "sd\n\f312f"
 
+
+  # s1 = %'<li class="collapsed" nid="25825.*aduka</a>\n</li>\n'
+  # s2 = %'<li class="collapsed" nid="258258" rel="tipitaka_ajax'
+  # p tail(s1, s2)
+
   puts 'OK'
 end
