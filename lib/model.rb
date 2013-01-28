@@ -20,11 +20,7 @@ module MyModel
 end
 
 def Model *params,hash
-  unless hash.is_a? Hash
-    params = params + [hash]
-    hash = {}
-  end
-  Model__ params, hash
+  hash.is_a?(Hash) ? Model__(params, hash) : Model__(params + [hash])
 end
 
 def Model__ params, state={}

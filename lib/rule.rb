@@ -13,7 +13,8 @@ end
 
 
 class Rule; is Model(:name, :getter, state: nil, state_assigned: false)
-  singleton_class.send :prepend, Composite
+  # singleton_class.send :prepend, Composite
+  extend Composite
 
   def feed node
     feed_value getter[node]
@@ -32,8 +33,11 @@ class Rule; is Model(:name, :getter, state: nil, state_assigned: false)
   end
 
   def to_hash
-    {name => state}
+    Hash[*pair] #{name => state} #Hash[*pair] #{name => state}
   end
+  def pair
+    [name, state]
+  end  
 
   private
   def assign_state value
@@ -121,9 +125,10 @@ class RegexpRule < CommandRule
     raise "wtf with regexp: #{to_re} !~ #{value}" unless to_re =~ value
   end
 
-  def to_hash
-    {name => to_re}
-  end
+  # def to_hash
+  #   {name => to_re}
+  # end
+  def pair; [name, to_re] end
 
   private
   def head str1, str2
@@ -171,6 +176,53 @@ class FlexibleRule < SimpleRule
     SimpleRule.new(*a).tap &x{ extend Chained }
   end
 end
+
+
+
+class AttributesRule; is Model(state: {}, )
+  extend Composite
+  def feed node
+    return unless node.respond_to? :attributes
+    feed_value Hash[node.attributes.map{|k,v|[k, typecasted(v.value) ]}] 
+  end
+  def feed_value hash
+    hash.each do |key,value|
+      (state[key] ||= FlexibleRule[key]).feed_value value # typecasted...
+    end
+  end
+
+  def to_hash
+  #   # {}
+    # require 'pry'
+    # binding.pry
+    all = state.merge(state){|k,v| v.pair[1] } #(&:to_hash) #.map(&:pair)
+    # p all
+    # hash = all.each_with_object({}){|x,o| o[x[0]] = x[1] }
+    {attributes: all}
+  #   raise 'lost values?' unless all.size == hash.size
+  #   {attributes: hash}
+  end
+  #   all = state.map(&:to_hash)
+  #   hash = all.each_with_object({}){|k,v| }
+  #   {attributes:  }
+  #   # {:attributes => state.merge(state){|k,v| raise unless v.state.size == 1; v.to_hash[0] } }
+  # end
+
+  private
+  def typecasted(str) # to test
+    [str.to_i, str.to_f, str].find { |cast| cast.to_s.sub(?,,?.) == str.sub(?,,?.) }
+  end
+  # def act value
+  #   unless (diff = value - state).empty?
+  #     self.state = state + diff
+  #   end
+  # end
+  # def assign_state value
+  #   super; self.state = value.uniq
+  # end  
+end
+
+
 
 if __FILE__ == $0
 require 'testdo'
@@ -349,6 +401,32 @@ test do
   rule.to_re === [/^aa.*bb$/m]
   rule.feed 'aa'
   rule.to_re === [/^aa.*$/m]  
+
+
+
+  require 'nokogiri'
+  rule = AttributesRule.new
+  rule.feed Nokogiri::HTML('<span att=123></span>').at('span')
+  rule.to_hash === [{:attributes=>{"att"=>123}}]
+  rule.feed Nokogiri::HTML('<span att=100></span>').at('span')
+  rule.to_hash === [{:attributes=>{"att"=>Set[123,100]}}]
+  8.times do |i| rule.feed Nokogiri::HTML("<span att=#{i}></span>").at('span') end
+
+  # p rule.to_hash
+  # exit
+
+  rule.to_hash[0][:attributes]['att'].size === 10
+  rule.feed Nokogiri::HTML('<span att=11></span>').at('span')
+  rule.to_hash === [{:attributes=>{"att"=>0..123}}]
+
+  rule = AttributesRule.new
+  rule.feed Nokogiri::HTML('<span att=123></span>') # should not raise: undefined method `attributes'
+
+
+
+
+
+
 
 
   # rule.state === [Set[[1,2]]]

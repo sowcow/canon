@@ -51,7 +51,8 @@ require 'testdo'
 test do
 
   class Any; is Model(:number)
-    singleton_class.send :prepend, Composite
+    # singleton_class.send :prepend, Composite
+    extend Composite    
     
     def add
       add! Any[number + 1]
