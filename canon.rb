@@ -22,8 +22,12 @@ class WTP < Struct.new :parts
   end
 
   def self.pages count
-    get.parts.map { |x|x.pages.map &:html }.flatten.sample(count)
+    all_pages.sample(count)
   end
+
+  def self.all_pages
+    get.parts.map { |x|x.pages.map &:html }.flatten
+  end  
 
   def only! selector
     parts.select! { |x| [*selector].include? x.name }

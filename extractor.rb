@@ -23,6 +23,13 @@
 
 # tap_ &x
 
+
+   # {"children_ids"=>#<Set: {[], [nil]}>},
+   # {:attributes=>
+   # children: { count: 0 } or { count: 1, ids: [] ...}
+   # { not only regexp, but examples too or edge cases, all combinations using db? }
+   # generates not a spec but Struct/Model with invariants that mostly needed to reject unused structs
+
 require 'my-sugar'
 require_delegation
 require_relative 'canon'
@@ -68,20 +75,23 @@ end
 #                [AttributesRule]
 
 measurements = -> do
- Compose(*%w"to_html text.to_s children.count children_tags children_classes children_ids".map { |x| FlexibleRule[x] } + 
-               [AttributesRule.new])
+ Compose(*%w"to_html.size  to_html  text.to_s.size  text.to_s 
+             children.count children_tags children_classes children_ids".map { |x| FlexibleRule[x] } + 
+             [AttributesRule.new])
 end
 
 # psych have problems with '123.'
 # YAML::ENGINE.yamler = 'syck'
 
 # [1,50,100,500].each do |i|
-[100].each do |i|
+['all'].each do |i|
   model = Extractor &measurements # { Compose *MEASUREMENTS.map { |x| FlexibleRule[x] }}
-  data = process(model, WTP.pages(i))
+  pages = WTP.all_pages #(i)
+  data = process(model, pages)
   data = Hash[data.map{|k,v| [k, v.to_hash] }]
   # File.write %'output#{i}.yml', YAML.dump(data)
-  require 'pp'; PP.pp(data,File.open("output#{i}.txt",'wt'))
+  require 'pp'; PP.pp(data,File.open("output_#{i}.txt",'wt'))
+  require 'yaml'; File("output_#{i}.yml").write YAML.dump data
   p "finished: #{i}"
 end
 
