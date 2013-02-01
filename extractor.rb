@@ -29,9 +29,11 @@
    # children: { count: 0 } or { count: 1, ids: [] ...}
    # { not only regexp, but examples too or edge cases, all combinations using db? }
    # generates not a spec but Struct/Model with invariants that mostly needed to reject unused structs
+   # class ...; PATH = /^div > ...$/ end
+   # 1:1
 
 require 'my-sugar'
-require_delegation
+#require_delegation
 require_relative 'canon'
 Dir['lib/*.rb'].each { |x| require_relative x }
 require 'nokogiri'
@@ -91,7 +93,7 @@ end
   data = Hash[data.map{|k,v| [k, v.to_hash] }]
   # File.write %'output#{i}.yml', YAML.dump(data)
   require 'pp'; PP.pp(data,File.open("output_#{i}.txt",'wt'))
-  require 'yaml'; File("output_#{i}.yml").write YAML.dump data
+  require 'yaml'; File.write("output_#{i}.yml", YAML.dump(data))
   p "finished: #{i}"
 end
 
