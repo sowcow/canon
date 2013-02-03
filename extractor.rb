@@ -46,7 +46,7 @@ require 'yaml'
 
 def process model, pages
   pages.each do |page|
-    Nokogiri::HTML(page).traverse do |node|
+    Nokogiri::HTML(page).at('html').traverse do |node|
       model.feed node
     end
   end

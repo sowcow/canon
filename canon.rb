@@ -21,8 +21,8 @@ class WTP < Struct.new :parts
     marshal_load 'canon'
   end
 
-  def self.pages count
-    all_pages.sample(count)
+  def self.pages count=nil
+    count ? all_pages.sample(count) : all_pages
   end
 
   def self.all_pages
@@ -68,6 +68,7 @@ if __FILE__ == $0
 
 require 'testdo'
 test do
+  WTP.pages.count === 20108
   WTP.pages(10).count === 10
   WTP.pages(10).all? { |x| x =~ /doctype/i }
 end

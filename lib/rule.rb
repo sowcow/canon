@@ -181,13 +181,49 @@ end
 
 class AttributesRule; is Model(state: {}, )
   extend Composite
+
+  # def feed node
+  #   feed_value getter[node]
+  # end
+  
+  # def feed_value value
+  #   if state_assigned
+  #     act value
+  #   else assign_state(value);
+  #     act value
+  #   end    
+  # end
+
+
+
   def feed node
     return unless node.respond_to? :attributes
-    feed_value Hash[node.attributes.map{|k,v|[k, typecasted(v.value) ]}] 
+    value = Hash[node.attributes.map{|k,v|[k, typecasted(v.value) ]}] 
+    if @state_assigned
+      feed_value value
+    else
+      assign_state value
+    end       
   end
-  def feed_value hash
+
+  def assign_state hash
+    @state_assigned = true
+    # self.state = value
     hash.each do |key,value|
       (state[key] ||= FlexibleRule[key]).feed_value value # typecasted...
+    end
+  end  
+
+  def feed_value hash
+    hash.each do |key,value|
+      if state[key]
+        state[key].feed_value value
+      else
+        state[key] = FlexibleRule[key]
+        state[key].feed_value nil
+        state[key].feed_value value
+      end
+      # (state[key] ||= FlexibleRule[key]).feed_value value # typecasted...
     end
   end
 
@@ -212,6 +248,8 @@ class AttributesRule; is Model(state: {}, )
   def typecasted(str) # to test
     [str.to_i, str.to_f, str].find { |cast| cast.to_s.sub(?,,?.) == str.sub(?,,?.) }
   end
+
+
   # def act value
   #   unless (diff = value - state).empty?
   #     self.state = state + diff
@@ -424,7 +462,12 @@ test do
 
 
 
-
+  require 'nokogiri'
+  rule = AttributesRule.new
+  rule.feed Nokogiri::HTML('<span></span>').at('span')
+  rule.to_hash === [{:attributes=>{}}]
+  rule.feed Nokogiri::HTML('<span att=100></span>').at('span')
+  rule.to_hash === [{:attributes=>{"att"=>Set[nil,100]}}]
 
 
 
