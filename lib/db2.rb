@@ -3,35 +3,6 @@ require 'mini_record'
 # Hey! just DB not self::DB
 
 
-module DB_Actions
-  def clear
-    connection.tables.each { |t| connection.execute("drop table if exists `#{t}`") } 
-    connection.execute("delete from sqlite_sequence")
-  end
-  def migrate
-    models.each &:auto_upgrade!
-  end
-  def renew
-    clear; migrate
-  end 
-
-  private
-  def models
-    space = DB.parent_module
-    space.constants.map { |x| space.const_get x }.select { |x| x.is_a?(Class) && x.superclass == DB }
-  end
-  def connection
-    DB.connection
-  end
-  def get_module who
-    Object.const_get get_module_name who
-  end
-  def get_module_name who
-    who.to_s.split("::").first
-  end  
-end
-
-
 module EasyRecord
   def self.included target
     target.module_eval <<-EVAL
@@ -46,16 +17,53 @@ module EasyRecord
   end
 
   def database; self::DATABASE end
+
+
+  module DB_Actions
+    def clear
+      connection.tables.each { |t| connection.execute("drop table if exists `#{t}`") } 
+      connection.execute("delete from sqlite_sequence")
+    end
+    def migrate
+      models.each &:auto_upgrade!
+    end
+    def renew
+      clear; migrate
+    end 
+
+    private
+    def models
+      space = DB.parent_module
+      space.constants.map { |x| space.const_get x }.select { |x| x.is_a?(Class) && x.superclass == DB }
+    end
+    def connection
+      DB.connection
+    end
+    def get_module who
+      Object.const_get get_module_name who
+    end
+    def get_module_name who
+      who.to_s.split("::").first
+    end  
+  end  
   include DB_Actions
 end
 
+def EasyRecord file
+  Module.new do
+    @file = file # is this attribute lost after all?
+    def self.included target
+      target.const_set :DATABASE, @file
+      target.send :include, EasyRecord  
+      target.extend target # why order matters? getting OK only when this line is last...
+    end
+  end
+end
 
 if __FILE__ == $0 # usage and tests
 
   module My
-    DATABASE = $my_database || 'temp-example.db' # 1) you can set global var before requirement
-    include EasyRecord                           # 2) ...
-    extend self                                  # 3) shrink it in one line?
+    include EasyRecord $my_database || 'temp-example.db'
 
     class Attribute < DB
       key :name
@@ -97,6 +105,10 @@ if __FILE__ == $0 # usage and tests
   a.values.create value: 2
   [Attribute,Value].map(&:count) == [1,2]  or raise
   Value.all.map(&:attribute).all? { |x| x == Attribute.first } or raise
+
+  instance_variable_get(:@file) == nil or raise
+  My.instance_variable_get(:@file) == nil or raise
+  DB.instance_variable_get(:@file) == nil or raise
 
   puts :OK
 end
