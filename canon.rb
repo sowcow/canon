@@ -26,7 +26,7 @@ class WTP < Struct.new :parts
   end
 
   def self.all_pages
-    get.parts.map { |x|x.pages.map &:html }.flatten
+    get.parts.map { |part| part.pages.map { |page| {html: page.html, part: part.name} }}.flatten
   end  
 
   def only! selector
@@ -60,9 +60,9 @@ if __FILE__ == $0
 
   raise unless wtp.parts.sample.pages.sample.html =~ /doctype/i # random page
 
-  all_pages = wtp.parts.map { |x|x.pages.map &:html }.flatten
-  raise unless all_pages.count == 20108
-  raise unless all_pages.all? { |x|x =~ /doctype/i }
+  # all_pages = wtp.parts.map { |x|x.pages.map &:html }.flatten
+  # raise unless all_pages.count == 20108
+  # raise unless all_pages.all? { |x| x =~ /doctype/i }
 
   raise unless ALL.uniq.count == 88
 
@@ -70,7 +70,8 @@ require 'testdo'
 test do
   WTP.pages.count === 20108
   WTP.pages(10).count === 10
-  WTP.pages(10).all? { |x| x =~ /doctype/i }
+  WTP.pages(10).all? { |x| x[:html] =~ /doctype/i }
+  WTP.pages(10).all? { |x| x[:part] =~ /^\d/ }
 end
 
   puts 'OK'

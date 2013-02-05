@@ -16,7 +16,7 @@ module Helpers
 end
 
 module Html2DB
-  DATABASE = 'temp.db'
+  DATABASE = $split_db || 'temp-split.db'
   def self.database; DATABASE end
 
   # nice place for this:
@@ -29,9 +29,9 @@ module Html2DB
   end
   class Element < ActiveRecord::Base
     key :name
-    belongs_to :page    
+    belongs_to :page
     has_many :attributes
-    has_ancestry; key :ancestry
+    has_ancestry; key :ancestry; index :ancestry
   end
   class Attribute < ActiveRecord::Base
     key :name
@@ -75,9 +75,14 @@ module Html2DB
     end
   end
 
-  def feed_pages pages, output
+  def feed_pages pages, output, pages_per_transaction=50
     Html2DB.renew
-    pages.each { |x| feed_page x }
+    pages.each_slice(pages_per_transaction).each do |pages|
+      Page.transaction do
+        pages.each { |x| feed_page *x }
+      end
+      print '+' # yield?
+    end
     File.rename Html2DB.database, output
   end
 end
