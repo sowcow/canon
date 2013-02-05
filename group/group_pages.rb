@@ -52,6 +52,8 @@ module GroupBySelector
 
   def self.open file
     Module.new do
+      extend self
+      include DB_Actions
       define_method(:database){ file }
 
       this_module = self
