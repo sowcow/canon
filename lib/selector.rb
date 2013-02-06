@@ -12,7 +12,7 @@ class Selector; is Model(:node)
 
   private
   def parents
-    node.respond_to?(:parent) ? Selector[node.parent] : []
+    node.respond_to?(:parent) && node.parent ? Selector[node.parent] : []
   end
   def this
     name = node.name

@@ -22,7 +22,9 @@ module EasyRecord
   module DB_Actions
     def clear
       connection.tables.each { |t| connection.execute("drop table if exists `#{t}`") } 
-      connection.execute("delete from sqlite_sequence")
+      # connection.execute("delete from sqlite_sequence") # no comments
+      tables = connection.execute("SELECT * FROM sqlite_master WHERE type='table'").map{|x|x['name']}
+      tables.each { |t| connection.execute("DELETE FROM `#{t}`") } 
     end
     def migrate
       models.each &:auto_upgrade!
@@ -109,6 +111,12 @@ if __FILE__ == $0 # usage and tests
   instance_variable_get(:@file) == nil or raise
   My.instance_variable_get(:@file) == nil or raise
   DB.instance_variable_get(:@file) == nil or raise
+
+  # o0
+  (Attribute.create bad_param: 123 rescue :error) == :error or raise
+  (Attribute.create value: 123 rescue :error) == :error or raise
+  (Attribute.create attribute_id: 123 rescue :error) == :error or raise
+  (Value.create name: 123 rescue :error) == :error or raise
 
   puts :OK
 end

@@ -1,3 +1,91 @@
+require '../lib/easy_record'
+require '../lib/selector'
+
+module GroupPages
+  include EasyRecord $group_pages_db || 'temp-group-pages.db'
+
+  class Page < DB
+    key :name
+    key :other; serialize :other, Hash # overhead?
+    has_many :elements
+  end
+
+  class Element < DB
+    key :selector
+    belongs_to :page
+    has_many :attributes
+  end
+
+  class Attribute < DB
+    key :name
+    belongs_to :element
+    has_many :values    
+  end
+
+  class Value < DB
+    key :value
+    belongs_to :attribute
+  end
+end
+
+###########  dirty...?
+class MyNode < Struct.new :name, :all_other, :id, :class
+  def initialize(*);super
+    x = all_other.find { |x| x[0] == 'id' }
+    self[:id] = x[1] if x
+
+    x = all_other.find { |x| x[0] == 'class' }
+    self[:class] = x[1] if x
+  end
+end
+def MySelector node
+  s = Selector[MyNode[node[0],node[1]]]
+  def s.parents; [] end
+  s
+end
+def my_selector element
+  path = element.path.map { |x| [x.name, x.attributes.map{|x| [x.name,x.value] }] }
+  path.map { |x| MySelector(x) }.join ' > '
+  # Selector[element].to_s
+end
+###########  dirty...?
+
+def convert split_db, result_db
+  $split_db = split_db
+  require '../split/all'
+
+  old = Html2DB
+  include GroupPages
+  renew
+
+  old::Element.find_each do |x|
+    $inc ||= -1; $inc += 1
+    exit 0 if $inc == 100 
+    # p x
+    # p selector x
+    p GroupPages::Element.create selector: my_selector(x)
+  end
+
+  ######################################### move pages by two sql calls if needed!
+  # old::Page.find_each do |p|
+  #   $inc ||= -1; $inc += 1
+  #   exit 0 if $inc == 3
+    
+  #   # p ({name: p.name, other: p.other})
+  #   page = GroupPages.Page.create name: p.name, other: p.other
+
+  #   p.elements.find_each do |e|
+  #     page.e
+  #   end
+  # end
+end
+
+
+if __FILE__ == $0
+  convert '../html-in.db', '...'
+end
+
+__END__
 # class Page < ActiveRecord::Base
 #   key :name
 #   key :other; serialize :other, Hash 
