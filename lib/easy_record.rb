@@ -3,7 +3,21 @@ require 'mini_record'
 # Hey! just DB not self::DB
 
 
-module EasyRecord
+module EasyRecordMixin
+
+  module MiniRecordBugFixForAbstractClasses
+    def table_definition
+      @_table_definition ||= begin
+                               tb = ActiveRecord::ConnectionAdapters::TableDefinition.new(connection)
+                               tb.primary_key(primary_key)
+                               tb
+                             end
+    end
+    def indexes
+      @_indexes ||= {}
+    end    
+  end
+
   def self.included target
     target.module_eval <<-EVAL
       class DB < ActiveRecord::Base
@@ -12,6 +26,8 @@ module EasyRecord
         
         @parent_module = #{target} # hmm... it works...
         singleton_class.send :attr_reader, :parent_module
+
+        extend MiniRecordBugFixForAbstractClasses
       end  
     EVAL
   end
@@ -24,7 +40,7 @@ module EasyRecord
       connection.tables.each { |t| connection.execute("drop table if exists `#{t}`") } 
       # connection.execute("delete from sqlite_sequence") # no comments
       tables = connection.execute("SELECT * FROM sqlite_master WHERE type='table'").map{|x|x['name']}
-      tables.each { |t| connection.execute("DELETE FROM `#{t}`") } 
+      tables.each { |t| connection.execute("DELETE FROM `#{t}`") }  # untested crap :P
     end
     def migrate
       models.each &:auto_upgrade!
@@ -56,8 +72,9 @@ def EasyRecord file
     @file = file # is this attribute lost after all?
     def self.included target
       target.const_set :DATABASE, @file
-      target.send :include, EasyRecord  
+      target.send :include, EasyRecordMixin
       target.extend target # why order matters? getting OK only when this line is last...
+                           # smell?...
     end
   end
 end
@@ -78,9 +95,11 @@ if __FILE__ == $0 # usage and tests
     end
   end
 
-
   My.database == 'temp-example.db' or raise
   include My
+
+  # p Attribute.reflect_on_all_associations
+  #########
 
   clear
   DB.connection.tables == [] or raise
@@ -111,6 +130,9 @@ if __FILE__ == $0 # usage and tests
   instance_variable_get(:@file) == nil or raise
   My.instance_variable_get(:@file) == nil or raise
   DB.instance_variable_get(:@file) == nil or raise
+
+  ActiveRecord::Base.abstract_class == nil or raise
+  DB.abstract_class == true or raise
 
   # o0
   (Attribute.create bad_param: 123 rescue :error) == :error or raise
