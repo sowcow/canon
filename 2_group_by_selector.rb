@@ -1,4 +1,4 @@
 require './group/all'
-include GroupBySelector
+# include GroupPages
 
 group 'html-in.db', 'grouped.db'

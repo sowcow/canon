@@ -1,14 +1,15 @@
-require '../lib/easy_record'
-require '../lib/selector'
+require_relative '../lib/easy_record'
+require_relative '../lib/selector'
 
 module GroupPages
   include EasyRecord $group_pages_db || 'temp-group-pages.db'
 
-  class Page < DB
-    key :name
-    key :other; serialize :other, Hash # overhead?
-    has_many :elements
-  end
+  ######################################### move pages by two sql calls if needed!
+  # class Page < DB
+  #   key :name
+  #   key :other; serialize :other, Hash # overhead?
+  #   has_many :elements
+  # end
 
   class Element < DB
     key :selector
@@ -28,7 +29,50 @@ module GroupPages
   end
 end
 
-###########  dirty...?
+
+def group split_db, result_db
+  $split_db = split_db
+  require_relative '../split/all'
+
+  old = Html2DB
+  include GroupPages
+  renew
+
+  DB.transaction do
+    old::Element.includes(:attributes).find_each do |e|
+      # $inc ||= -1; $inc += 1
+      # break 0 if $inc == 100
+
+      element = Element.create selector: my_selector(e)
+      e.attributes.find_each do |a|
+        element.attributes.where(name: a.name).first_or_create.values.create value: a.value
+      end
+    end
+  end
+  File.rename DB::DATABASE, result_db
+end
+
+
+if __FILE__ == $0
+  result = 'my-temp.db'
+  # group '../html-in.db', result # it's too big for testing,
+    
+  # test using sequel???
+
+  # File.exist?(result) or raise
+  # File.delete(result)
+
+  puts :OK
+end
+
+
+
+
+
+
+
+
+BEGIN{###########  dirty...?
 class MyNode < Struct.new :name, :all_other, :id, :class
   def initialize(*);super
     x = all_other.find { |x| x[0] == 'id' }
@@ -48,42 +92,8 @@ def my_selector element
   path.map { |x| MySelector(x) }.join ' > '
   # Selector[element].to_s
 end
-###########  dirty...?
-
-def convert split_db, result_db
-  $split_db = split_db
-  require '../split/all'
-
-  old = Html2DB
-  include GroupPages
-  renew
-
-  old::Element.find_each do |x|
-    $inc ||= -1; $inc += 1
-    exit 0 if $inc == 100 
-    # p x
-    # p selector x
-    p GroupPages::Element.create selector: my_selector(x)
-  end
-
-  ######################################### move pages by two sql calls if needed!
-  # old::Page.find_each do |p|
-  #   $inc ||= -1; $inc += 1
-  #   exit 0 if $inc == 3
-    
-  #   # p ({name: p.name, other: p.other})
-  #   page = GroupPages.Page.create name: p.name, other: p.other
-
-  #   p.elements.find_each do |e|
-  #     page.e
-  #   end
-  # end
-end
-
-
-if __FILE__ == $0
-  convert '../html-in.db', '...'
-end
+###########  dirty...?  
+}
 
 __END__
 # class Page < ActiveRecord::Base
