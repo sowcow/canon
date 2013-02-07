@@ -21,7 +21,7 @@ module HTML_BIN
 
   class Page < Struct.new *%i[url other html]
     extend Helpers
-    def self.[] url=nil, other={}, given_html
+    def self.[] given_html, url=nil, other={}
       root = Element[html given_html]
       new url, other, root
     end

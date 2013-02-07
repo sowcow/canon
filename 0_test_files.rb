@@ -1,13 +1,7 @@
-require_relative './canon'
-require_relative './split/html_2_bin'
 require_relative './lib/awesome_marshaling'
+require_relative './split/html_2_bin'
 
-Save 'pages.bin' do |file|
-  pages = WTP.pages.map { |x| [x[:html], nil, {part: x[:part]}] }
-  pages.each do |page|
-    file << HTML_BIN::Page[*page]
-  end
-end
+p Load('pages.bin').take(1)
 
 
 

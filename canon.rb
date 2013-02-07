@@ -10,6 +10,11 @@
 #
 #============================
 
+#
+# Yes it dirts namespace
+# to fix that i need to deal with already marshalled file `canon` (500Mb)
+#
+
 class Page < Struct.new :html
 end
 

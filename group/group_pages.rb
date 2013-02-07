@@ -1,6 +1,11 @@
-require_relative '../lib/easy_record'
 require_relative '../lib/selector'
 
+module GroupPages
+end
+
+
+__END__
+require_relative '../lib/easy_record'
 module GroupPages
   include EasyRecord $group_pages_db || 'temp-group-pages.db'
 
