@@ -1,6 +1,7 @@
 require_relative './canon'
 require_relative './split/html_2_bin'
 require_relative './lib/awesome_marshaling'
+include CollectionFile
 
 Save 'pages.bin' do |file|
   pages = WTP.pages.map { |x| [x[:html], nil, {part: x[:part]}] }
@@ -9,7 +10,7 @@ Save 'pages.bin' do |file|
   end
 end
 
-
+# sort /reduce
 
 
 __END__

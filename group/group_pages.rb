@@ -1,6 +1,27 @@
 require_relative '../lib/selector'
 
+
 module GroupPages
+  class Processor
+    def initialize; @elements = [] end
+    def feed page
+      elements = page.elements
+      @elements.find { |x| }
+    end
+  end
+  # class Page < Struct.new *%i[url other html]
+  #   # extend Helpers
+  #   def self.[] url, other, html
+  #     root = Element[html given_html]
+  #     new url, other, root
+  #   end
+  # end  
+  class Selector < Struct.new *%i[selector attributes]
+    def self.[]
+    end
+  end
+  class Attribute < Struct.new *%i[name values]
+  end
 end
 
 
