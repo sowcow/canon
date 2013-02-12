@@ -16,11 +16,16 @@ class Selector; is Model(:node)
   end
   def this
     name = node.name
-    id = node[:id] =~ /\d/ ? nil : node[:id]
-    klass = node[:class] =~ /\d/ ? nil : node[:class]
+    id = attr(node,:id) =~ /\d/ ? nil : attr(node,:id)
+    klass = attr(node,:class) =~ /\d/ ? nil : attr(node,:class)
     [[node.name, id].compact * '#', klass].compact * '.'
   end
   def inspect; to_s.inspect end # private?
+  
+  private # helper
+  def attr node, name
+    att = node.attributes.find { |x| x.name == name } ? att.value : nil
+  end
 end
 
 

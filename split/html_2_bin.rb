@@ -27,11 +27,11 @@ module HTML_BIN
     end
   end
 
-  class Element < Struct.new *%i[name text attributes children]
+  class Element < Struct.new *%i[name text attributes children parent]
     extend Helpers
-    def self.[] node
+    def self.[] node, parent=nil
       attributes = extract_attributes(node).map { |pair| Attribute[*pair] }
-      children = node.children.map { |x| Element[x] }
+      children = node.children.map { |x| Element[x, node] }
       new node.name, node.text, attributes, children
     end
   end

@@ -1,6 +1,7 @@
 require 'forwardable'
 require 'zlib'   # if installed? in code too?
-require 'snappy' # if installed? in code too?
+# require 'snappy' # if installed? in code too?
+# packed item, lazy unpacking
 
 module CollectionFile
 
@@ -23,7 +24,7 @@ module CollectionFile
   end
 
   MARSHAL = Marshaler.new
-  SNAP = Processor[Snappy]
+  # SNAP = Processor[Snappy]
   ZIP = Processor[Zlib]
 
   DEFAULT = ZIP
@@ -65,7 +66,7 @@ end
 if __FILE__ == $0
   include CollectionFile
 
-  [MARSHAL,ZIP,SNAP,DEFAULT].each do |xxx| # optional param
+  [MARSHAL,ZIP,DEFAULT].each do |xxx| # optional param  #SNAP
   
     def delete file; File.delete file if File.exist? file end
     file = 'test-marshal.bin'
@@ -76,6 +77,11 @@ if __FILE__ == $0
     end
 
     Load(file,xxx).to_a == [*1..3] or raise
+    a = Load(file,xxx)
+    a.peek == 1 or raise
+    a.peek == 1 or raise
+    a.next == 1 or raise
+    a.peek == 2 or raise
 
 
     big1 = 'test-marshal-big1.bin'

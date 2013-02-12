@@ -1,8 +1,12 @@
 require_relative './lib/awesome_marshaling'
 require_relative './split/html_2_bin'
+include CollectionFile
 
 p Load('pages.bin').take(1)
-
+# p Load('mini/grouped.bin').take(1)
+# p Load('pages.bin').count
+# 20108
+# [Finished in 91.2s]
 
 
 

@@ -3,8 +3,21 @@ require_relative './split/html_2_bin'
 require_relative './lib/awesome_marshaling'
 include CollectionFile
 
-Save 'pages.bin' do |file|
-  pages = WTP.pages.map { |x| [x[:html], nil, {part: x[:part]}] }
+# [Finished in 759.2s]
+# 242MB
+require 'fileutils'
+include FileUtils
+
+project = 'mini'
+rm_r project if Dir.exist? project
+mkpath project
+
+filter = ANGUTTARA
+
+Save "#{project}/pages.bin" do |file|
+  # pages = WTP.pages.map { |x| [x[:html], nil, {part: x[:part]}] }
+  pages = WTP.all_pages.select { |x| filter.include? x[:part]}.
+                        map { |x| [x[:html], nil, {part: x[:part]}] }
   pages.each do |page|
     file << HTML_BIN::Page[*page]
   end
