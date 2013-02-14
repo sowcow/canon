@@ -71,7 +71,7 @@ module PatternExtractors
       chars.each { |x| x.shift head.size }
       chars = chars.map &:reverse
       tail = take_same chars
-      [head, tail]
+      [head, tail.reverse]
     end  
     def take_same chars
       (chars[0].zip(*chars[1..-1]).take_while { |row| (first = row.first) != nil && row.all? { |x| x == first } }.transpose.first || []).join
@@ -129,6 +129,7 @@ if __FILE__ == $0
   RegexpExtractor.new(%w[lloo llo lloo]).extract == /^llo.*$/m or raise
   RegexpExtractor.new(%w[lloo ll ]).extract == /^ll.*$/m or raise
   RegexpExtractor.new(%w[lloo oll]).extract == /^.*$/m or raise
+  RegexpExtractor.new(%w[abcxdef abcvdef]).extract == /^abc.*def$/m or raise
 
   extract_pattern(*11.times.map { |i| "a#{i}b" }) == /^a.*b$/m or raise
 
