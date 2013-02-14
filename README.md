@@ -2,7 +2,8 @@
 
 * tipitaka from offline worldtipitaka.org (http://archive.is/Ugwv)
 * categorized raw html pages
-* all in one file, marshalled by ruby (1.9.3)
+* all in one file, marshalled by ruby (2.0.0-preview2) with use of zlib
+* [WIP] scripts for maximum data extracttion
 
 ## Why
 
@@ -11,14 +12,15 @@
 
 ## Progress
 
-- [x] just categorized html files
-- [ ] remove garbage?
-- [ ] extract schema?
-- [ ] be sure that no data is lost?
-- [ ] output data file and ruby interface to it
+```
+- [#] just categorized html files
+- [~] remove garbage?
+- [~] extract schema?
+- [ ] be sure that no data is lost? (generate same pages from db?)
+- [ ] output data file with ruby interface to it
+```
 
 ## Usage
 
 * `git clone git://github.com/sowcow/canon.git; cd canon`
-* `gunzip canon.gz -c > canon`
 * read/run canon.rb
