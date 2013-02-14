@@ -1,0 +1,100 @@
+#encoding: utf-8
+require 'nokogiri'
+require 'forwardable'
+require File.expand_path './lib/selector'
+require 'set'
+% require 'set'
+
+#require_relative 'selector'
+#require_relative 'lib/selector'
+
+<%
+def equation key, value
+  case value
+  when Set
+    "Set#{value.to_a.inspect}.include?(#{key}) &&"
+  when Array
+    "(#{key} - #{value} == []) &&"
+  when Hash          
+    se 'unknown hash!' unless key == :attributes
+    value.each_pair.map { |key,value|
+      equation("node['#{ key }']", value)
+    }.join "\n"
+  when Range
+    "(#{value.inspect}) === #{key} &&"
+  else
+    "#{value.inspect} === #{key} &&"
+  end  
+end
+%>
+
+module Helpers
+  def split html
+    [].tap do |nodes|
+      Nokogiri::HTML(html).at('html').traverse { |node| nodes << node }
+    end
+  end
+  # def subclasses
+  #   ObjectSpace.each_object(Class).select { |klass| klass < self.class }
+  # end
+  def key node
+    Selector[node].to_s
+  end
+end
+
+module Prepared
+class Page
+  include Helpers
+  attr_reader :elements
+
+  def initialize page_html=nil
+    @elements = split(page_html).map { |node| find_element_for node } if page_html
+  end
+  def valid?
+    elements.all? &:valid?
+  end
+
+  # private
+  def find_element_for node
+    found = find_elements(key(node))
+    raise "wtf? #{found}" unless found.count == 1
+    found = found[0]
+    found.new(node)
+  end
+  def find_elements key
+    element_classes.select { |x| x.accept? key }
+  end
+  def element_classes
+    Elements.constants.reject { |x| x == :Base }.map { |x| Elements.const_get(x) }.select { |x| x.is_a? Class }
+  end
+
+  module Elements
+    
+    class Base
+      def initialize node; @node = node end
+      def self.accept? key
+        self::MATCH =~ key ? true: false
+      end
+
+      def method_missing *a; node.send *a end
+      #extend Forwardable
+      #def_delegators :@node, :children, :attr
+      private; attr_reader :node
+    end
+
+% data.each_with_index do |(selector,rules), index|   
+    class Element_<%= index %> < Base
+      MATCH = /^<%= Regexp.escape selector %>$/
+
+      def valid? # Rules count: <%= rules.count %>
+% rules.each do |rule| key,value = rule.keys[0], rule.values[0]
+        <%= equation(key, value) %>
+% end     
+        true
+      end
+    end
+% end
+
+  end
+end
+end

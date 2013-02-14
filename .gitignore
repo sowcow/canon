@@ -1,7 +1,2 @@
 /canon
-/*.html
-/output*.*
-*.??~
-*.db
-*.bin
-temp
+/xz/*
