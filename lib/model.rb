@@ -8,7 +8,8 @@
 # TODO state - lambda
 # TODO state - ruby2 optional params?
 # TODO
-# TODO
+# TODO Class.new { is Model([:any], c: 1); self }[1,2,3,4,5, c: 6].instance_eval{ @any } == [1,2,3,4,5]
+# TODO Class.new { is Model([:any], c: 1); self }[1,2,3,4,5, c: 6].c == 6
 # TODO
 
 require 'my-sugar'
@@ -52,13 +53,6 @@ def Model__ params, state={}
     @params[@params.index(@with_asterisk)] = @without_asterisk if @splat_param
     @params[@params.index(@with_ampersand)] = @without_ampersand if @block_param
 
-    # if @params.is_a?(Array) && @params.size == 1 && @params[0].is_a?(Array) #&& @params[0].size == 1
-    #   @params = @params[0]
-    #   first_lines = "def initialize *#{@params*","}"
-    # else
-    #   first_lines = "def initialize #{@params*","}"
-    # end
-
     eval %'
       #{first_lines}
         #{@params.map{|x|"@#{x}"}*"," +'='+ @params*"," if @params.any?}
@@ -79,27 +73,13 @@ end
 if __FILE__ == $0
 require 'testdo'
 test do  
-  # class My; include StateModel([:a], b: 2)
-  #   def initialize *a;super
-  #     @c = 3
-  #   end
-  # end
-  
-  # class My2; include Model(:a, :b)
-  #   def initialize *a;super
-  #     @c = 3
-  #   end
-  # end
 
-  # raise unless My.new(1).instance_eval{ a } == 1
-  # raise unless My.new(1).b == 2
-  # raise unless My.new(1).instance_eval{ @c } == 3
-  # raise unless My.new(1).instance_eval{ @params }.nil?
-  # raise unless My.new(1).instance_eval{ @state }.nil?
-  # raise unless My[1].b == 2
-
-  # raise unless My2.new(1,2).instance_eval{ a } == 1
-  # raise unless My2.new(1,2).instance_eval{ @c } == 3
+  class My; is Model [:a], b: 2
+    def initialize(*);super
+      self.b = 'abc'
+    end
+  end  
+  My.new(1,2,3, b: '...').b === 'abc'
 
   Class.new { is Model(:a, :b, c: 3); self }.new(1,2).instance_eval { a } === 1
   Class.new { is Model(:a, :b, c: 3); self }.new(1,2).instance_eval { b } === 2
@@ -134,12 +114,6 @@ test do
 
 
   Class.new { is Model(c: 3); self }.new.instance_eval { self.c = 4;self }.c === 4
-
-  # NOT SO FAST NOT SO FAST NOT SO FAST NOT SO FAST NOT SO FAST
-  # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
-  # Class.new { is Model([:any], c: 1); self }[1,2,3,4,5, c: 6].instance_eval{ @any } == [1,2,3,4,5]
-  # Class.new { is Model([:any], c: 1); self }[1,2,3,4,5, c: 6].c == 6
-  # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
 
 end
 end
