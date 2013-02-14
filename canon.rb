@@ -30,8 +30,12 @@ class WTP < Struct.new :parts
     count ? all_pages.sample(count) : all_pages
   end
 
-  def self.all_pages
-    get.parts.map { |part| part.pages.map { |page| {html: page.html, part: part.name} }}.flatten
+  def self.all_pages # redundant?
+    get.all_pages
+  end  
+
+  def all_pages
+    parts.map { |part| part.pages.map { |page| {html: page.html, part: part.name} }}.flatten
   end  
 
   def only! selector
