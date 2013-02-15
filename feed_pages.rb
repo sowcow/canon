@@ -17,6 +17,11 @@ ANGUTTARA 48169606
 SAMYUTTA  53233954
 =end
 END{
+  STORAGE = :LevelDB # :Redis
+  ON_START = proc do |storage|
+    # storage.adapter.backend.flushall
+  end
+
 
   def time_of
     t = Time.now
@@ -46,7 +51,9 @@ END{
   def my_feed pages, db
     rm db
     htmls = pages.map { |x| x[:html] }
-    feed htmls, Moneta.new(:LevelDB, :dir => db)
+    storage = Moneta.new(STORAGE, :dir => db)
+    ON_START.(storage)    
+    feed htmls, storage
   end
 
   def feed_all # > 4 days
@@ -62,7 +69,13 @@ END{
     my_feed WTP.get.only!(FOUR_NIKAYAS).all_pages, 'output/four_nikayas'
   end  
 
-  feed_majhima
+  feed_digha
+
+  # feed_4_nikayas
+  # sort_out_things WTP.get.all_pages.map { |x| x[:html] }, '/media/pyro/769c1ce3-2b00-423c-8254-ab5e7bc368e0/md5-all_attributes.canon'
+  # sort_out_things WTP.get.all_pages.map { |x| x[:html] }, '/media/pyro/769c1ce3-2b00-423c-8254-ab5e7bc368e0/all_attributes.canon'
+  # sort_out_kindly '/media/pyro/769c1ce3-2b00-423c-8254-ab5e7bc368e0/all_attributes.canon',
+  #                 '/media/pyro/769c1ce3-2b00-423c-8254-ab5e7bc368e0/attributes-canon-md5'
 }
 # 245.8s - only split - all
 # HashFile: 4285.0s 9.8Mb
@@ -90,13 +103,95 @@ def show_selectors htmls, output, count = 50
   File.write output, all_selectors.join(?\n)
 end
 
+# def sort_out_things htmls, file
+#   require_relative 'lib/awesome_marshaling'
+#   include CollectionFile
+#   rm file
+
+#   progress = ProgressBar.create format: '%a %e [%B] %p%%', total: htmls.count
+
+#   # file = Mpneta.new :
+
+#   # Save(file) do |file|
+#     htmls.each do |html|
+#       split(html).each do |node|
+#         selector = selector(node)
+#         attributes(node).each do |attribute,value|
+#           # file << [selector, attribute, value] # fixed schema...
+#           # push_to_dir file, [selector, attribute, value]
+#         end
+#       end
+#       progress.increment
+#     end
+#   # end
+# end
+
+# require 'digest/md5'
+# def md5 text
+#   Digest::MD5.hexdigest text
+# end
+
+# # require 'yajl'
+# JSO = Marshal #Yajl::Parser.new
+# # hash = parser.parse(json)
+
+# def push_to_dir output, given
+#   selector, attribute, value = *given
+
+
+#   # dir, file = md5(JSO.dump selector), md5(JSO.dump attribute)
+#   # dir = join(output,dir)
+#   # mkpath dir
+#   # file = join(dir,file)
+#   # Push(file,value,MARSHAL)  
+# end
+
+# ALL_CANON_ATTRIBUTES_COUNT = 142310777 # [Finished in 919.7s] Count(big_file)
+# def sort_out_kindly big_file, output
+#   require_relative 'lib/awesome_marshaling'
+#   require_relative 'lib/file_works'
+#   include CollectionFile
+#   require 'json'
+
+#   rm output
+
+#   progress = ProgressBar.create format: '%a %e [%B] %p%%', total: ALL_CANON_ATTRIBUTES_COUNT
+
+#   Load(big_file).each do |given|
+#     selector, attribute, value = *given
+#     dir, file = md5(selector.to_json), md5(attribute.to_json)
+#     dir = join(output,dir)
+#     mkpath dir
+#     file = join(dir,file)
+#     Push(file,value,MARSHAL)
+#     progress.increment if rand <= 0.05
+#   end
+#   progress.increment
+
+#   puts 'these two numbers should be same if there was no collisions and data loss:'
+#   puts `find #{output} -type f  -maxdepth 1 | wc -l`
+#   puts ALL_CANON_ATTRIBUTES_COUNT
+# end
+
 def feed htmls, store
 
   progress = ProgressBar.create format: '%a %e [%B] %p%%', total: htmls.count
 
   htmls.each do |html|
+    
+    all = split(html)
+    g = all.group_by_{ name == 'text'}
+    texts = g[true]; others = g[false]
 
-    split(html).each do |node|
+    texts = texts.map do |text|
+      selector = selector(node)
+
+    end
+
+
+    # split(html).each do |node|
+    # split(html).each do |node|
+    if false
       selector = selector(node)
 
       if store.key? selector

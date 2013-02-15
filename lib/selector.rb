@@ -5,7 +5,7 @@ class Selector; is Model(:node)
 
   def to_s; path * ' > ' end
 
-  protected
+  # protected
   def to_a; path end
 
   private

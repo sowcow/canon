@@ -2,6 +2,7 @@ require 'forwardable'
 require 'zlib'   # if installed? in code too?
 # require 'snappy' # if installed? in code too?
 # packed item, lazy unpacking
+# Load.count uses Count
 
 module CollectionFile
 
@@ -16,10 +17,10 @@ module CollectionFile
       @processor = processor
     end
     def load io
-      Marshal.load @processor.inflate super
+      Marshal.load @processor.inflate super # use super?
     end
     def dump obj,io
-      super @processor.deflate(Marshal.dump(obj)), io
+      super @processor.deflate(Marshal.dump(obj)), io  # use super?
     end
   end
 
@@ -61,6 +62,23 @@ module CollectionFile
     end
   end  
 
+  def Push file, data, processor=DEFAULT
+    File.open(file,'ab') do |file|
+      processor.dump data, file
+    end
+  end
+
+  def Count file
+    count = 0
+    File.open file do |io|
+      while not io.eof?
+        Marshal.load io
+        count += 1
+      end
+    end  
+    count    
+  end
+
 end
 
 if __FILE__ == $0
@@ -75,6 +93,7 @@ if __FILE__ == $0
     Save file,xxx do |file|
       (1..3).each { |i| file << i }
     end
+    Count(file) == 3 or raise    
 
     Load(file,xxx).to_a == [*1..3] or raise
     a = Load(file,xxx)
@@ -94,6 +113,7 @@ if __FILE__ == $0
     Save big1,xxx do |file|
       (1..100).each { |i| file << i }
     end
+    Count(big1) == 100 or raise
 
     Save big2,xxx do |file|
       Load(big1,xxx).each { |i| file << "~#{i}~"}
@@ -118,6 +138,16 @@ if __FILE__ == $0
     [file,big1,big2,big3,big4].each &method(:delete)
 
   end
+
+  file = 'test-push'
+  delete file
+  Push file, '123', MARSHAL
+  Push file, '456', MARSHAL
+  Push file, %w[7 8 9], MARSHAL
+  Push file, 10, MARSHAL
+  Load(file,MARSHAL).to_a == ['123','456',%w[7 8 9],10] or raise
+  Count(file) == 4 or raise
+  delete file
 
   puts :OK # all tests succeed 
 end

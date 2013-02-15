@@ -34,7 +34,11 @@ class WTP < Struct.new :parts
 
   def all_pages
     parts.map { |part| part.pages.map { |page| {html: page.html, part: part.name} }}.flatten
-  end  
+  end
+
+  def htmls
+    all_pages.map { |x| x[:html] }
+  end
 
   def only! selector
     parts.select! { |x| [*selector].include? x.name }
@@ -74,6 +78,7 @@ require 'testdo'
 test do
   WTP.pages.count === 20108
   WTP.pages(10).count === 10
+  wtp.htmls.sample(10).all? { |x| x =~ /doctype/i }
   WTP.pages(10).all? { |x| x[:html] =~ /doctype/i }
   WTP.pages(10).all? { |x| x[:part] =~ /^\d/ }
 end
@@ -85,8 +90,10 @@ BEGIN{
   module FileWorks
     module_function
 
+    # require 'zlib' # jruby crap anyway: marshal data too short:)
+    # INFLATER = ::Zlib::Inflate.new #(-Zlib::MAX_WBITS)
     def marshal_load_archived file
-      Marshal.load Zlib.inflate File.read file
+      Marshal.load Zlib.inflate File.read file 
     end
   end
 }

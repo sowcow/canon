@@ -9,6 +9,9 @@ module HTML
   def split page
     recurse_children(html(page))
   end
+  def texts page
+    recurse_children(html(page)).select { |x| x.name == 'text' }
+  end  
   def just_attributes node
     node.attributes.map { |k, v| [k, typecasted(v.value)] }
   end
@@ -43,6 +46,7 @@ if __FILE__ == $0
   page = '<ul class=any id=1><li class=a>1</li><li id=b>2</li></ul>'
   html(page).name == 'html' or raise
   split(page).map(&:name) == %w[html body ul li text li text] or raise
+  texts(page).map(&:text) == %w[1 2] or raise
 
   typecasted('0').class == Fixnum or raise
   typecasted('0.').class == String or raise
